@@ -13,24 +13,38 @@ The initial package deliberately avoids putting EagleFine classes in Minecraft's
 
 ## Core classes
 
-- `EagleFine`: process-wide entry point and access to shared core services.
-- `EagleFineConfig`: in-memory feature toggle storage. Unknown features default
-  to disabled. Persistent storage is not implemented yet.
+- `EagleFine`: process-wide entry point and startup initialization.
+- `EagleFineConfig`: versioned feature-toggle storage using Eaglercraft's
+  browser storage API. All features default to disabled.
 - `EagleFineFeature`: metadata contract for a feature implementation.
 - `EagleFineFeatureRegistry`: explicit registry that preserves registration
   order and rejects duplicate IDs.
 
+## Startup integration
+
+Minecraft initializes EagleFine immediately after constructing its normal
+`Options` object. This ensures Eaglercraft's own settings have loaded before
+EagleFine reads its independent configuration.
+
+The configuration is stored under the Eaglercraft storage key
+`eaglefine.config.v1` as gzip-compressed, versioned JSON. It is intentionally
+separate from `options.txt` and the legacy Eaglercraft `g` storage key.
+
+Invalid or unknown configuration data is ignored, leaving feature toggles
+disabled. Feature state changes are saved immediately.
+
 ## Current limitations
 
-These classes are scaffolding only. At this stage EagleFine:
+EagleFine currently:
 
-- does not register itself with Minecraft's startup lifecycle;
+- initializes during client startup;
+- loads and saves a separate feature-toggle configuration;
+- exposes a feature registry, but does not register gameplay/render features;
 - does not add a settings screen or key binding;
-- does not change rendering, lighting, textures, or performance;
-- does not save configuration between sessions.
+- does not change rendering, lighting, textures, or performance.
 
-Those integrations will be added individually after the source compile check
-has passed and the relevant browser platform APIs have been reviewed.
+Those integrations will be added individually and tested against the browser
+platform.
 
 ## Integration rule
 

@@ -1,5 +1,7 @@
 package net.minecraft.client;
 
+import dev.eaglefine.EagleFine;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.UnmodifiableIterator;
 import com.mojang.authlib.GameProfile;
@@ -407,6 +409,7 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
       this.fixerUpper = DataFixers.getDataFixer();
       this.gameThread = Thread.currentThread();
       this.options = new Options(this, this.gameDirectory);
+      EagleFine.getInstance().initialize();
       this.debugEntries = new DebugScreenEntryList(this.gameDirectory, this.fixerUpper);
       boolean lastStartWasClean = this.options.startedCleanly;
       this.options.startedCleanly = false;

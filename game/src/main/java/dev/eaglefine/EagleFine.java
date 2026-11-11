@@ -3,9 +3,8 @@ package dev.eaglefine;
 /**
  * Entry point and shared services for EagleFine.
  *
- * <p>This class currently provides project metadata and the in-memory core
- * services. Minecraft lifecycle hooks are intentionally not connected yet;
- * that integration will be added after the baseline build is verified.</p>
+ * <p>This class provides project metadata and shared core services. Minecraft
+ * calls {@link #initialize()} after its normal options have loaded.</p>
  */
 public final class EagleFine {
     public static final String MOD_ID = "eaglefine";
@@ -16,6 +15,7 @@ public final class EagleFine {
 
     private final EagleFineConfig config = new EagleFineConfig();
     private final EagleFineFeatureRegistry featureRegistry = new EagleFineFeatureRegistry();
+    private boolean initialized;
 
     private EagleFine() {
     }
@@ -28,7 +28,28 @@ public final class EagleFine {
     }
 
     /**
-     * Returns the in-memory feature configuration.
+     * Loads EagleFine configuration once during client startup.
+     *
+     * <p>This method is safe to call more than once.</p>
+     */
+    public synchronized void initialize() {
+        if (initialized) {
+            return;
+        }
+
+        config.load();
+        initialized = true;
+    }
+
+    /**
+     * Returns whether the client startup hook has initialized EagleFine.
+     */
+    public synchronized boolean isInitialized() {
+        return initialized;
+    }
+
+    /**
+     * Returns the shared feature configuration.
      */
     public EagleFineConfig getConfig() {
         return config;
