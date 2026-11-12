@@ -1,0 +1,92 @@
+name: EagleFine standalone HTML test build
+
+on:
+  push:
+    branches:
+      - "eaglefine/**"
+    paths:
+      - ".github/workflows/standalone-test-build.yml"
+      - "game/**"
+      - "platform/**"
+      - "platform-lwjgl/**"
+      - "platform-teavm/**"
+      - "target_lwjgl_desktop/**"
+      - "target_teavm/**"
+      - "target_teavm_wasm_gc/**"
+      - "target_teavm_wasm_gc_mesh/**"
+      - "target_teavm_wasm_gc_server/**"
+      - "teavm-compat/**"
+      - "wasm-toolchain/**"
+      - "build.gradle.kts"
+      - "gradle/**"
+      - "gradle.properties"
+      - "gradlew"
+      - "package.json"
+      - "package-lock.json"
+      - "settings.gradle.kts"
+  workflow_dispatch:
+    inputs:
+      upload_plain_html:
+        description: "Upload unencrypted HTML artifact. This is publicly downloadable because this repository is public."
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eaglefine-standalone-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  standalone-test-build:
+    name: Build silent standalone HTML
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+
+    steps:
+      - name: Check out EagleFine
+        uses: actions/checkout@v7
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: gradle
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Show runner resources
+        run: |
+          java --version
+          node --version
+          free -h
+          df -h .
+
+      - name: Install pinned Node dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build EagleFine standalone HTML
+        env:
+          EAGLER_BUILD_CAP_MIB: "13312"
+        run: |
+          node wasm-toolchain/build-single-html.js --output "$RUNNER_TEMP/EagleFine-26.2.html"
+          test -s "$RUNNER_TEMP/EagleFine-26.2.html"
+          ls -lh "$RUNNER_TEMP/EagleFine-26.2.html"
+          sha256sum "$RUNNER_TEMP/EagleFine-26.2.html"
+
+      - name: Upload unencrypted HTML artifact
+        if: github.event_name == 'workflow_dispatch' && inputs.upload_plain_html
+        uses: actions/upload-artifact@v4
+        with:
+          name: EagleFine-26.2-silent-test-plain
+          path: ${{ runner.temp }}/EagleFine-26.2.html
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
