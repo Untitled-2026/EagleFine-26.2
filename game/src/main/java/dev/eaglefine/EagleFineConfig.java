@@ -125,8 +125,13 @@ public final class EagleFineConfig {
     }
 
     public synchronized void reset() {
-        if (!featureStates.isEmpty()) {
+        boolean changed = !featureStates.isEmpty()
+                || Float.compare(zoomFactor, DEFAULT_ZOOM_FACTOR) != 0
+                || !smoothZoomEnabled;
+        if (changed) {
             featureStates.clear();
+            zoomFactor = DEFAULT_ZOOM_FACTOR;
+            smoothZoomEnabled = true;
             save();
         }
     }

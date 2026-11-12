@@ -2,21 +2,21 @@
 
 ## Milestone 0 — establish the baseline
 
-- [ ] Run the existing `:game:compileJava` task on Java 25 in GitHub Actions.
+- [x] Run the existing `:game:compileJava` task on Java 25 in GitHub Actions.
 - [ ] Fix only build-environment issues in this milestone.
-- [ ] Record the successful upstream baseline before modifying game code.
+- [x] Record the successful upstream baseline before modifying game code.
 - [ ] Keep the full HTML build separate until its memory and artifact requirements are validated.
 
 ## Milestone 1 — EagleFine Core
 
-- [ ] Add a small feature/configuration foundation under `dev.eaglefine`.
-- [ ] Define how options are loaded, saved, and reset.
-- [ ] Keep disabled-by-default features from changing vanilla behaviour.
-- [ ] Add tests or compile checks for each component where practical.
+- [x] Add a small feature/configuration foundation under `dev.eaglefine`.
+- [x] Define how options are loaded, saved, and reset.
+- [x] Keep disabled-by-default features from changing vanilla behaviour.
+- [x] Add tests or compile checks for each component where practical.
 
 ## Milestone 2 — settings and simple client features
 
-- [ ] Add an EagleFine settings entry point.
+- [x] Add an EagleFine settings entry point.
 - [x] Implement a configurable hold-to-zoom feature (default C, 4x, smooth transition).
 - [ ] Add safe visual options such as fog and animation controls where supported.
 - [ ] Verify persistence and keyboard/controller compatibility.
@@ -51,4 +51,4 @@
 
 ## Current scope
 
-Milestone 0 and the initial Zoom implementation are in progress. Zoom is implemented in source but remains subject to CI and in-client testing.
+Milestones 0 and 1 are complete. The Zoom feature and its in-game settings page are implemented in source, and the Java compile check is green. A standalone HTML build and in-client testing are still required.

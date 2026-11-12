@@ -2,6 +2,7 @@ package net.minecraft.client.gui.screens.options;
 
 import java.util.Objects;
 import java.util.function.Supplier;
+import dev.eaglefine.EagleFineOptionsScreen;
 import net.minecraft.client.Options;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.StringWidget;
@@ -28,6 +29,7 @@ public class OptionsScreen extends Screen implements HasGamemasterPermissionReac
    private static final Component CHAT = Component.translatable("options.chat");
    private static final Component RESOURCEPACK = Component.translatable("options.resourcepack");
    private static final Component ACCESSIBILITY = Component.translatable("options.accessibility");
+   private static final Component EAGLEFINE = Component.translatable("options.eaglefine");
    private static final Component CREDITS_AND_ATTRIBUTION = Component.translatable("options.credits_and_attribution");
    private static final int COLUMNS = 2;
    private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, 61, 33);
@@ -81,6 +83,7 @@ public class OptionsScreen extends Screen implements HasGamemasterPermissionReac
          )
       );
       helper.addChild(this.openScreenButton(ACCESSIBILITY, () -> new AccessibilityOptionsScreen(this, this.options)));
+      helper.addChild(this.openScreenButton(EAGLEFINE, () -> new EagleFineOptionsScreen(this)));
       helper.addChild(this.openScreenButton(CREDITS_AND_ATTRIBUTION, () -> new CreditsAndAttributionScreen(this)));
       this.layout.addToContents(gridLayout);
       this.layout.addToFooter(Button.builder(CommonComponents.GUI_DONE, button -> this.onClose()).width(200).build());

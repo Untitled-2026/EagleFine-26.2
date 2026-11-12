@@ -41,6 +41,12 @@ The default zoom factor is 4x; configurable range is 2x through 16x. Smooth
 zoom is enabled by default. These preferences are stored in EagleFine's own
 browser configuration.
 
+## Settings screen
+
+The EagleFine entry in Minecraft's Options screen opens a dedicated settings page.
+It currently exposes the zoom-strength slider, Smooth Zoom toggle, a shortcut
+into Controls for changing the Zoom key, and a reset-to-defaults action.
+
 ## Current limitations
 
 EagleFine currently:
@@ -49,8 +55,8 @@ EagleFine currently:
 - loads and saves a separate configuration;
 - registers a hold-to-zoom key;
 - smoothly changes the world-camera FOV while the key is held;
-- does not yet add an EagleFine settings screen;
-- does not yet implement dynamic lighting, connected textures, or shader packs.
+- does not yet implement dynamic lighting, connected textures, or shader packs;
+- still needs a standalone HTML build and in-client validation.
 
 ## Integration rule
 
