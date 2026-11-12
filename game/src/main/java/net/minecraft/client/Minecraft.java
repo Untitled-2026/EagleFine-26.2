@@ -409,7 +409,7 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
       this.fixerUpper = DataFixers.getDataFixer();
       this.gameThread = Thread.currentThread();
       this.options = new Options(this, this.gameDirectory);
-      EagleFine.getInstance().initialize();
+      EagleFine.getInstance().initialize(this.options);
       this.debugEntries = new DebugScreenEntryList(this.gameDirectory, this.fixerUpper);
       boolean lastStartWasClean = this.options.startedCleanly;
       this.options.startedCleanly = false;

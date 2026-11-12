@@ -17,7 +17,7 @@
 ## Milestone 2 — settings and simple client features
 
 - [ ] Add an EagleFine settings entry point.
-- [ ] Implement a configurable zoom feature.
+- [x] Implement a configurable hold-to-zoom feature (default C, 4x, smooth transition).
 - [ ] Add safe visual options such as fog and animation controls where supported.
 - [ ] Verify persistence and keyboard/controller compatibility.
 
@@ -51,4 +51,4 @@
 
 ## Current scope
 
-Only Milestone 0 is active. No OptiFine-style feature should be described as implemented until it exists in the code and passes a test.
+Milestone 0 and the initial Zoom implementation are in progress. Zoom is implemented in source but remains subject to CI and in-client testing.

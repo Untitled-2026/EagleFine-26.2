@@ -1,5 +1,7 @@
 package net.minecraft.client;
 
+import dev.eaglefine.EagleFine;
+
 import com.mojang.blaze3d.systems.RenderSystem;
 import java.util.Arrays;
 import net.minecraft.client.entity.ClientAvatarState;
@@ -221,7 +223,8 @@ public class Camera implements TrackedWaypoint.Camera {
       }
 
       float fov = this.minecraft.options.fov().get().intValue() * Mth.lerp(partialTicks, this.oldFovModifier, this.fovModifier);
-      return this.modifyFovBasedOnDeathOrFluid(partialTicks, fov);
+      fov = this.modifyFovBasedOnDeathOrFluid(partialTicks, fov);
+      return EagleFine.getInstance().applyZoomToFov(fov);
    }
 
    private float calculateHudFov(final float partialTicks) {
