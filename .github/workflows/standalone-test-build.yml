@@ -27,7 +27,7 @@ on:
   workflow_dispatch:
     inputs:
       upload_plain_html:
-        description: "Upload unencrypted HTML artifact. This is publicly downloadable because this repository is public."
+        description: "Upload the unencrypted HTML artifact (public download; 7-day retention)."
         required: true
         type: boolean
         default: false
