@@ -2,43 +2,42 @@
 
 EagleFine is an independent graphics and performance project built on the Eaglercraft 26.2 workspace. Its goal is to recreate selected OptiFine-style features using code that fits Eaglercraft's browser runtime and rendering architecture.
 
-This is an early-stage project. Features listed as planned are not necessarily implemented, and browser testing is required before considering a feature complete.
+This is an early-stage project. Feature parity with desktop OptiFine is not guaranteed; each feature must be implemented and tested against the browser runtime.
 
-## Project status
+## Current milestone: First playable client and Zoom
 
-The active development branch is `eaglefine/bootstrap`. It currently contains the EagleFine core/configuration work, the Zoom feature, and an in-game EagleFine settings page. The Java source compile check has passed. A successful Java compile does not replace a full browser build or in-game testing.
+The first standalone EagleFine HTML test client has been built and opened in a browser. Initial testing looks good. Development continues on `eaglefine/bootstrap`; `main` remains the clean upstream baseline with only the shared project README and manually-triggered build workflow added.
 
-Current test-build limitations:
-- The standalone HTML workflow creates a silent test client because the workspace does not currently include the required game audio/music archives.
-- Zoom and the settings page still need to be tested in the generated browser client.
-- Browser/WebGL capabilities may prevent exact parity with every desktop OptiFine feature.
+### Implemented
 
-## Download a standalone HTML test build
+- **EagleFine Core:** client startup initialization, feature registration foundation, and separate persisted configuration.
+- **Zoom:** hold-to-zoom camera FOV feature, with smooth zoom and adjustable strength from 2x to 16x (default 4x).
+- **EagleFine Settings:** a dedicated page accessible from Minecraft's Options screen, with Zoom Strength, Smooth Zoom, and Reset to Defaults.
+- **Key binding access:** the EagleFine settings shortcut opens the Key Binds screen directly, where the Zoom key can be changed.
+- **Main-menu branding:** the lower-left credit is changed to "Made by Untitled".
 
-The repository includes a GitHub Actions workflow named **EagleFine standalone HTML test build**. It builds the source on a GitHub-hosted Ubuntu runner. Uploading the plain HTML file is a separate, opt-in step.
+### Tested
 
-1. Open the repository on GitHub: [Untitled-2026/EagleFine-26.2](https://github.com/Untitled-2026/EagleFine-26.2).
-2. Select the **Actions** tab.
-3. In the left sidebar, select **EagleFine standalone HTML test build**.
-4. Click **Run workflow** above the workflow run list.
-5. In the **Branch** dropdown, select `eaglefine/bootstrap`. Do not select `main` for the EagleFine test build; `main` is kept as the upstream baseline.
-6. Enable the checkbox described as **Upload the unencrypted HTML artifact (public download; 7-day retention)**.
-7. Click **Run workflow** and wait for the run to finish successfully.
-8. Open that completed run and scroll to the **Artifacts** section.
-9. Download `EagleFine-26.2-silent-test-plain`. GitHub downloads it as a ZIP archive.
-10. Extract the ZIP. The extracted folder contains `EagleFine-26.2.html`.
+- Java game-source compilation succeeds in GitHub Actions.
+- A standalone HTML build completes successfully.
+- The generated HTML client has been opened in a browser; initial visual testing looks good.
 
-The artifact is retained for **7 days**. Run the workflow again to produce a fresh build after that period.
+### Known limitations
 
-### Important artifact note
+- **No sound or music yet.** The current source workspace does not contain the Minecraft sound files or audio archives, and the GitHub Actions HTML workflow does not add them. The upstream build guide documents a separate "Get game audio" process for fetching official sound objects and rebuilding the sound archives; that process requires FFmpeg 6.1.1. We have not integrated that audio step into EagleFine's automated build yet.
+- The latest menu-credit and Key Binds navigation changes need to be confirmed in a fresh HTML build.
+- Browser/WebGL capabilities may limit some advanced OptiFine-style features.
 
-The repository is public. An unencrypted HTML artifact should therefore be treated as publicly accessible to people who can access the repository. Only enable the upload option when you are comfortable publishing that build.
+## Next milestone: Polish and core graphics
 
-If the **Run workflow** button is missing, make sure you are viewing the correct workflow in the Actions tab. GitHub requires a manually triggered workflow file to exist on the repository's default branch. A copy of the standalone-build workflow is kept on `main` for this reason; choose `eaglefine/bootstrap` in the Branch dropdown to build the actual EagleFine development code.
+1. Restore sound and music using the documented official audio-input process, then include the resulting archives in the automated build without committing restricted assets.
+2. Re-test Zoom, Smooth Zoom, the key binding editor, and saved settings in the browser client.
+3. Begin the next rendering feature, with Dynamic Lights as the next candidate.
+4. Expand graphics settings as features become functional.
 
-## Run the Java compile check locally
+## Development
 
-The Java source compile uses Java 25:
+The project uses the upstream Eaglercraft 26.2 Gradle workspace. The documented Java source check uses Java 25:
 
 ```bash
 ./gradlew :game:compileJava --console=plain --no-daemon --max-workers=2 -Dorg.gradle.parallel=false
@@ -46,17 +45,7 @@ The Java source compile uses Java 25:
 
 On Windows, use `gradlew.bat` instead of `./gradlew`.
 
-The complete standalone HTML build is more memory-intensive than the Java compile check. The GitHub Actions workflow is provided for that build.
-
-## Planned components
-
-- **Core:** configuration model, feature registration, and shared utilities.
-- **Settings:** graphics options, key bindings, and saved preferences.
-- **Graphics:** visual options and rendering integrations.
-- **Performance:** measured optimizations and resource controls.
-- **Shaders:** browser-compatible post-processing experiments.
-
-Not every desktop OptiFine feature will necessarily be possible in a browser client. Implementation should be guided by the actual Eaglercraft renderer and browser platform constraints.
+The standalone HTML build is more memory-intensive than the Java compile check. GitHub Actions is configured to build it on a GitHub-hosted Ubuntu runner.
 
 ## Project principles
 
