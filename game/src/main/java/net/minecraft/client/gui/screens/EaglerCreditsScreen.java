@@ -27,7 +27,7 @@ public class EaglerCreditsScreen extends Screen {
       return Component.translatableWithFallback("eagler.credits.brand", "Eaglercraft %s",
             net.lax1dude.eaglercraft.v1_8.EaglercraftVersion.projectForkVersion)
          .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)
-         .append(Component.translatableWithFallback("eagler.credits.madeBy", "\nMade by o_xer").withStyle(ChatFormatting.AQUA))
+         .append(Component.translatableWithFallback("eagler.credits.madeBy", "\nMade by Untitled").withStyle(ChatFormatting.AQUA))
          .append(Component.translatableWithFallback("eagler.credits.basedOnLong", "\n\nHeavily based on EaglercraftX 1.8 by lax1dude.")
             .withStyle(ChatFormatting.WHITE))
          .append(Component.translatableWithFallback("eagler.credits.contributors", "\n\nOriginal EaglercraftX 1.8 contributors")
