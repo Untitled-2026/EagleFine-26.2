@@ -21,10 +21,12 @@ public final class EagleFine {
     private final EagleFineConfig config = new EagleFineConfig();
     private final EagleFineFeatureRegistry featureRegistry = new EagleFineFeatureRegistry();
     private final EagleFineZoomFeature zoomFeature = new EagleFineZoomFeature();
+    private final EagleFineDynamicLightsFeature dynamicLightsFeature = new EagleFineDynamicLightsFeature();
     private boolean initialized;
 
     private EagleFine() {
         featureRegistry.register(zoomFeature);
+        featureRegistry.register(dynamicLightsFeature);
     }
 
     public static EagleFine getInstance() {

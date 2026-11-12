@@ -1,10 +1,13 @@
 package net.minecraft.client.renderer.chunk;
 
+import dev.eaglefine.EagleFineDynamicLights;
+
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.CardinalLighting;
+import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.ColorResolver;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -53,6 +56,22 @@ public class RenderSectionRegion implements BlockAndTintGetter {
    @Override
    public CardinalLighting cardinalLighting() {
       return this.cardinalLighting;
+   }
+
+   @Override
+   public int getBrightness(final LightLayer layer, final BlockPos pos) {
+      int light = this.lightEngine.getLayerListener(layer).getLightValue(pos);
+      if (layer == LightLayer.BLOCK) {
+         light = Math.max(light, EagleFineDynamicLights.getLightLevel(pos.getX(), pos.getY(), pos.getZ()));
+      }
+      return light;
+   }
+
+   @Override
+   public int getRawBrightness(final BlockPos pos, final int darkening) {
+      int skyLight = this.getBrightness(LightLayer.SKY, pos) - darkening;
+      int blockLight = this.getBrightness(LightLayer.BLOCK, pos);
+      return Math.max(blockLight, skyLight);
    }
 
    @Override

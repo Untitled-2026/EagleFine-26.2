@@ -24,7 +24,7 @@ import org.slf4j.Logger;
  */
 public final class EagleFineConfig {
     private static final String STORAGE_KEY = "eaglefine.config.v1";
-    private static final int CONFIG_VERSION = 1;
+    private static final int CONFIG_VERSION = 2;
     private static final float DEFAULT_ZOOM_FACTOR = 4.0F;
     private static final float MIN_ZOOM_FACTOR = 2.0F;
     private static final float MAX_ZOOM_FACTOR = 16.0F;
@@ -34,6 +34,7 @@ public final class EagleFineConfig {
     private final Map<String, Boolean> featureStates = new LinkedHashMap<String, Boolean>();
     private float zoomFactor = DEFAULT_ZOOM_FACTOR;
     private boolean smoothZoomEnabled = true;
+    private boolean dynamicLightsEnabled = false;
 
     /**
      * Loads the last saved configuration. Missing or invalid data leaves safe
@@ -61,9 +62,14 @@ public final class EagleFineConfig {
             JsonElement featuresElement = root.get("features");
             if (versionElement == null || !versionElement.isJsonPrimitive()
                     || !versionElement.getAsJsonPrimitive().isNumber()
-                    || versionElement.getAsInt() != CONFIG_VERSION
                     || featuresElement == null || !featuresElement.isJsonObject()) {
                 LOGGER.warn("Ignoring EagleFine configuration with an unsupported or invalid format");
+                return;
+            }
+
+            int storedVersion = versionElement.getAsInt();
+            if (storedVersion < 1 || storedVersion > CONFIG_VERSION) {
+                LOGGER.warn("Ignoring EagleFine configuration with an unsupported version: {}", storedVersion);
                 return;
             }
 
@@ -95,10 +101,19 @@ public final class EagleFineConfig {
                 loadedSmoothZoom = smoothElement.getAsBoolean();
             }
 
+            boolean loadedDynamicLights = false;
+            JsonElement dynamicLightsElement = root.get("dynamicLights");
+            if (storedVersion >= 2 && dynamicLightsElement != null
+                    && dynamicLightsElement.isJsonPrimitive()
+                    && dynamicLightsElement.getAsJsonPrimitive().isBoolean()) {
+                loadedDynamicLights = dynamicLightsElement.getAsBoolean();
+            }
+
             featureStates.clear();
             featureStates.putAll(loaded);
             zoomFactor = loadedZoomFactor;
             smoothZoomEnabled = loadedSmoothZoom;
+            dynamicLightsEnabled = loadedDynamicLights;
         } catch (Exception exception) {
             LOGGER.warn("Could not load EagleFine configuration; using safe defaults", exception);
         }
@@ -127,11 +142,13 @@ public final class EagleFineConfig {
     public synchronized void reset() {
         boolean changed = !featureStates.isEmpty()
                 || Float.compare(zoomFactor, DEFAULT_ZOOM_FACTOR) != 0
-                || !smoothZoomEnabled;
+                || !smoothZoomEnabled
+                || dynamicLightsEnabled;
         if (changed) {
             featureStates.clear();
             zoomFactor = DEFAULT_ZOOM_FACTOR;
             smoothZoomEnabled = true;
+            dynamicLightsEnabled = false;
             save();
         }
     }
@@ -165,6 +182,17 @@ public final class EagleFineConfig {
         }
     }
 
+    public synchronized boolean isDynamicLightsEnabled() {
+        return dynamicLightsEnabled;
+    }
+
+    public synchronized void setDynamicLightsEnabled(boolean enabled) {
+        if (dynamicLightsEnabled != enabled) {
+            dynamicLightsEnabled = enabled;
+            save();
+        }
+    }
+
     public synchronized Map<String, Boolean> getFeatureStates() {
         return Collections.unmodifiableMap(new LinkedHashMap<String, Boolean>(featureStates));
     }
@@ -178,6 +206,7 @@ public final class EagleFineConfig {
         root.addProperty("version", CONFIG_VERSION);
         root.addProperty("zoomFactor", zoomFactor);
         root.addProperty("smoothZoom", smoothZoomEnabled);
+        root.addProperty("dynamicLights", dynamicLightsEnabled);
 
         JsonObject features = new JsonObject();
         for (Map.Entry<String, Boolean> entry : featureStates.entrySet()) {

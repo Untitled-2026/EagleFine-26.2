@@ -19,13 +19,14 @@
 - [x] Add an EagleFine settings entry point.
 - [x] Implement a configurable hold-to-zoom feature (default C, 4x, smooth transition).
 - [ ] Add safe visual options such as fog and animation controls where supported.
+- [x] Add a persisted Dynamic Lights toggle.
 - [ ] Verify persistence and keyboard/controller compatibility.
 
 ## Milestone 3 — graphics features
 
 - [ ] Investigate the existing texture-atlas and block-model pipeline.
 - [ ] Prototype connected-texture rules.
-- [ ] Investigate dynamic lighting within the browser rendering budget.
+- [x] Implement a first-pass held-item Dynamic Lights path for inline and mesh-worker chunk compilation.
 - [ ] Add visual comparisons and regression checks.
 
 ## Milestone 4 — performance
@@ -51,4 +52,4 @@
 
 ## Current scope
 
-Milestones 0 and 1 are complete. The Zoom feature and its in-game settings page are implemented in source, and the Java compile check is green. A standalone HTML build and in-client testing are still required.
+Milestones 0 and 1 are complete. Zoom, the settings page, credits branding, and a first-pass held-item Dynamic Lights implementation are in source. Dynamic Lights still requires browser visual/performance testing; the current test client remains silent until the audio-resource step is integrated.

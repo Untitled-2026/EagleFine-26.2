@@ -10,6 +10,8 @@
 
 package net.lax1dude.eaglercraft.v1_8.mesh;
 
+import dev.eaglefine.EagleFineDynamicLights;
+
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.List;
@@ -248,7 +250,8 @@ public final class SectionSnapshotBuilder {
 							}
 					}
 
-					int bl = blockLightReader.getLightValue(pos) & 0x0F;
+					int bl = Math.max(blockLightReader.getLightValue(pos) & 0x0F,
+                            EagleFineDynamicLights.getLightLevel(pos.getX(), pos.getY(), pos.getZ()));
 					int sl = skyLightReader.getLightValue(pos) & 0x0F;
 					int nb = cell >> 1;
 					if ((cell & 1) == 0) {

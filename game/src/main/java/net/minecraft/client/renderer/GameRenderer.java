@@ -1,6 +1,8 @@
 package net.minecraft.client.renderer;
 
 import com.mojang.blaze3d.ProjectionType;
+import dev.eaglefine.EagleFine;
+import dev.eaglefine.EagleFineDynamicLights;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.pipeline.MainTarget;
 import com.mojang.blaze3d.pipeline.RenderTarget;
@@ -313,6 +315,7 @@ public class GameRenderer implements AutoCloseable, TrackedWaypoint.Projector {
 
    public void tick() {
       this.lightmapRenderStateExtractor.tick();
+      EagleFineDynamicLights.tick(this.minecraft, EagleFine.getInstance().getConfig());
       LocalPlayer player = this.minecraft.player;
       if (this.mainCamera.entity() == null) {
          this.mainCamera.setEntity(player);

@@ -45,6 +45,11 @@ public final class EagleFineOptionsScreen extends Screen {
                         (button, enabled) -> config.setSmoothZoomEnabled(enabled));
         settings.addChild(smoothZoomButton);
 
+        CycleButton<Boolean> dynamicLightsButton = CycleButton.onOffBuilder(config.isDynamicLightsEnabled())
+                .create(Component.translatable("eaglefine.options.dynamic_lights"),
+                        (button, enabled) -> config.setDynamicLightsEnabled(enabled));
+        settings.addChild(dynamicLightsButton);
+
         LinearLayout actions = LinearLayout.horizontal().spacing(8);
         actions.addChild(Button.builder(
                 Component.translatable("eaglefine.options.controls"),
@@ -56,6 +61,7 @@ public final class EagleFineOptionsScreen extends Screen {
                     config.reset();
                     zoomSlider.setZoomFactor(config.getZoomFactor());
                     smoothZoomButton.setValue(config.isSmoothZoomEnabled());
+                    dynamicLightsButton.setValue(config.isDynamicLightsEnabled());
                 }).width(150).build());
         settings.addChild(actions);
 

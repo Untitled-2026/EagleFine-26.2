@@ -8143,6 +8143,7 @@
   "eaglefine.options.zoom_description": "Hold the assigned Zoom key to zoom in.",
   "eaglefine.options.zoom_strength": "Zoom Strength: %s",
   "eaglefine.options.smooth_zoom": "Smooth Zoom",
+  "eaglefine.options.dynamic_lights": "Dynamic Lights",
   "eaglefine.options.controls": "Change Key Binding",
   "eaglefine.options.reset": "Reset to Defaults",
   "key.eaglefine.zoom": "Zoom"
