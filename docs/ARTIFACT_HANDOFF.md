@@ -1,32 +1,25 @@
-# Standalone HTML artifact handoff
+# Standalone HTML test build
 
-The standalone workflow builds a silent, single-file EagleFine HTML client, then
-encrypts it before uploading it as a GitHub Actions artifact.
+The manual and branch-triggered workflow builds a silent, single-file EagleFine
+HTML client without encrypting it.
 
-## Why the uploaded file is encrypted
+## Build and download
 
-The repository is public, so an unencrypted Actions artifact would be available
-to other repository readers. The workflow uses RSA-OAEP-SHA256 and AES-256-GCM
-to encrypt the HTML before upload. The matching private key is supplied separately
-to the intended recipient and must never be committed.
+1. Open the repository's **Actions** tab.
+2. Select **EagleFine standalone HTML test build**.
+3. Click **Run workflow** and select the `eaglefine/bootstrap` branch.
+4. To make a downloadable artifact, enable **Upload unencrypted HTML artifact**.
+5. Open the completed run and download
+   `EagleFine-26.2-silent-test-plain`.
 
-## Download and decrypt on Windows
+## Public artifact warning
 
-1. Open the successful **EagleFine standalone HTML test build** run in the
-   repository's Actions tab.
-2. Download the artifact named `EagleFine-26.2-silent-test-encrypted` and
-   extract its ZIP file.
-3. Save the separately supplied `eaglefine-artifact-private.pem` beside the
-   extracted `EagleFine-26.2.html.enc` file. Do not commit or share the private key.
-4. Run this command from the repository folder (adjust the paths if needed):
+This repository is public. GitHub allows anyone with read access to a repository
+to download its workflow artifacts. Enabling the upload option therefore makes
+the unencrypted HTML downloadable by other people too. Leave the option disabled
+for a build-only run that does not upload the HTML.
 
-       node wasm-toolchain/decrypt-artifact.js EagleFine-26.2.html.enc eaglefine-artifact-private.pem EagleFine-26.2.html
-
-Node.js 22 or newer is required. The decryptor verifies the AES-GCM authentication
-tag, original byte count, and SHA-256 digest.
-
-The encrypted Actions artifact is retained for seven days. Download it before
-it expires.
+The artifact is retained for seven days.
 
 ## Current test-build limitation
 
