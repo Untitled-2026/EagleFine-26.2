@@ -22,7 +22,7 @@ The repository includes a GitHub Actions workflow named **EagleFine standalone H
 3. In the left sidebar, select **EagleFine standalone HTML test build**.
 4. Click **Run workflow** above the workflow run list.
 5. In the **Branch** dropdown, select `eaglefine/bootstrap`. Do not select `main` for the EagleFine test build; `main` is kept as the upstream baseline.
-6. Enable the checkbox named **Upload unencrypted HTML artifact**.
+6. Enable the checkbox described as **Upload the unencrypted HTML artifact (public download; 7-day retention)**.
 7. Click **Run workflow** and wait for the run to finish successfully.
 8. Open that completed run and scroll to the **Artifacts** section.
 9. Download `EagleFine-26.2-silent-test-plain`. GitHub downloads it as a ZIP archive.
