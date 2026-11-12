@@ -42,7 +42,8 @@ public class EPKPackagerMain {
 		Path output = Path.of(args[1]);
 		String name = args.length > 2 ? args[2] : "assets.epk";
 		boolean includeWebUnreachable = args.length > 3 && "--include-web-unreachable".equals(args[3]);
-		if(args.length > 3 && !includeWebUnreachable) {
+		boolean allowEmpty = args.length > 3 && "--allow-empty".equals(args[3]);
+		if(args.length > 3 && !includeWebUnreachable && !allowEmpty) {
 			System.err.println("Unknown option: " + args[3]);
 			System.exit(1);
 		}
@@ -59,7 +60,7 @@ public class EPKPackagerMain {
 				}
 			});
 		}
-		if(!includeWebUnreachable && excluded.size() != WEB_UNREACHABLE_ASSETS.size()) {
+		if(!includeWebUnreachable && !allowEmpty && excluded.size() != WEB_UNREACHABLE_ASSETS.size()) {
 			Set<String> missing = new HashSet<>(WEB_UNREACHABLE_ASSETS);
 			missing.removeAll(excluded);
 			throw new IOException("Expected web-unreachable assets are missing from source tree: " + missing);

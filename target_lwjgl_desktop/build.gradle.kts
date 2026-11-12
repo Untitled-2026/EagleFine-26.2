@@ -76,3 +76,35 @@ tasks.register<JavaExec>("buildAssetsEPKWithWebUnreachable") {
 		"--include-web-unreachable"
 	)
 }
+
+
+// Development-only sounds archive for the first EagleFine browser test build.
+// It makes the client boot without audio when the original EPK audio inputs are
+// not available in this source workspace. Replace this with the real sounds EPK
+// before preparing a sound-enabled client.
+tasks.register<JavaExec>("buildSilentSoundsEPK") {
+	group = "eaglercraft"
+	description = "Create a valid empty sounds.epk for a silent browser test build"
+	dependsOn("classes")
+
+	val emptySoundsInput = layout.buildDirectory.dir("empty-sounds-input")
+	val soundsOutput = rootProject.layout.projectDirectory.file("target_teavm/build/web/sounds.epk")
+	outputs.file(soundsOutput)
+
+	classpath = sourceSets["main"].runtimeClasspath
+	mainClass = "net.lax1dude.eaglercraft.v1_8.sp.server.export.EPKPackagerMain"
+
+	doFirst {
+		val inputDir = emptySoundsInput.get().asFile
+		inputDir.deleteRecursively()
+		inputDir.mkdirs()
+		soundsOutput.asFile.parentFile.mkdirs()
+	}
+
+	args(
+		emptySoundsInput.get().asFile.absolutePath,
+		soundsOutput.asFile.absolutePath,
+		"sounds",
+		"--allow-empty"
+	)
+}

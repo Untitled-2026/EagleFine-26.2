@@ -176,6 +176,21 @@ function prepareBaseAssets() {
   fs.mkdirSync(path.dirname(hosted), { recursive: true });
   fs.copyFileSync(packed, hosted);
   console.log(`[single-html] Installed source-matched assets.epk (${fs.statSync(hosted).size.toLocaleString()} bytes)`);
+
+  // The checked-in source workspace does not contain the original OGG audio
+  // objects. Generate a valid empty EPK so the browser test client can boot
+  // without sounds; the actual audio pack can be restored in a later build.
+  run("./gradlew", [
+    ":target_lwjgl_desktop:buildSilentSoundsEPK",
+    "--console=plain",
+    "--no-daemon",
+    "--max-workers=1",
+    "-Dorg.gradle.parallel=false",
+    "-Dorg.gradle.jvmargs=-Xmx4096m -Xss4m -XX:MaxMetaspaceSize=768m -XX:+UseG1GC"
+  ]);
+  const silentSounds = path.join(repo, "target_teavm", "build", "web", "sounds.epk");
+  if (!fs.existsSync(silentSounds)) fail("silent sounds task did not produce sounds.epk");
+  console.log(`[single-html] Installed silent sounds.epk (${fs.statSync(silentSounds).size.toLocaleString()} bytes)`);
 }
 
 function compressedWasm(name, bytes) {
@@ -342,7 +357,7 @@ const meshWasm = read("mesh-worker.wasm");
 const serverWasm = read("server-worker.wasm");
 const assets = read("assets.epk");
 const sounds = read("sounds.epk");
-if (!fs.existsSync(musicSource)) {
+if (withMusic && !fs.existsSync(musicSource)) {
   fail(`missing music EPK at ${musicSource}; build the regular TeaVM web assets first`);
 }
 const music = withMusic ? fs.readFileSync(musicSource) : null;
@@ -706,7 +721,7 @@ console.log(`  music.epk:       ${(music ? music.length : 0).toLocaleString()} B
 console.log(`  output HTML:     ${outputBytes.toLocaleString()} B (${(outputBytes / 1_000_000).toFixed(2)} MB)`);
 console.log(`[single-html] wrote ${output}`);
 
-if (withoutMusic) {
+if (withoutMusic && fs.existsSync(musicSource)) {
   const musicPack = spawnSync(process.execPath, [
     path.join(repo, "wasm-toolchain", "export-music-resource-pack.js"),
     musicSource,
@@ -714,6 +729,8 @@ if (withoutMusic) {
   ], { cwd: repo, stdio: "inherit" });
   if (musicPack.error) fail(musicPack.error.message);
   if (musicPack.status !== 0) fail(`optional music pack export exited with code ${musicPack.status}`);
+} else if (withoutMusic) {
+  console.log("[single-html] Optional music pack unavailable; skipping export for this silent test build");
 }
 
 if (withoutMusic && outputBytes > target && !diagnosticBuild && !fastPackage) {

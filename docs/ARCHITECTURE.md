@@ -63,3 +63,16 @@ EagleFine currently:
 Prefer EagleFine-owned classes and narrow, documented Minecraft integration
 points. Any renderer modification must preserve the original path when the
 feature is inactive and include fallbacks for unsupported browser/GPU features.
+
+
+## First standalone test build
+
+The checked-in workspace does not include the original OGG sound files or
+optional music EPK. The first browser test build therefore generates a valid
+empty `sounds.epk`, skips the optional music pack, and runs silently. It is
+intended to validate startup, the EagleFine Options entry, and Zoom behavior;
+it is not a sound-enabled release build.
+
+Because this fork is public, the standalone HTML is encrypted before being
+uploaded as a short-lived GitHub Actions artifact. Only the encrypted payload
+is exposed by the workflow.
