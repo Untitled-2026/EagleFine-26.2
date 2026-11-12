@@ -1,0 +1,5 @@
+# EagleFine handoff decryption keys must never be committed
+eaglefine-artifact-private.pem
+**/eaglefine-artifact-private.pem
+*artifact-private*.pem
+*.private.pem

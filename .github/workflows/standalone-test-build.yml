@@ -43,6 +43,9 @@ jobs:
       - name: Check out EagleFine
         uses: actions/checkout@v7
 
+      - name: Validate handoff public key
+        run: openssl pkey -pubin -in .github/keys/eaglefine-artifact-public.pem -noout
+
       - name: Set up Java 25
         uses: actions/setup-java@v6
         with:
@@ -87,5 +90,5 @@ jobs:
           name: EagleFine-26.2-silent-test-encrypted
           path: ${{ runner.temp }}/EagleFine-26.2.html.enc
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 7
           compression-level: 0
