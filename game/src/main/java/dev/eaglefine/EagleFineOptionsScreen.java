@@ -8,7 +8,7 @@ import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.layouts.HeaderAndFooterLayout;
 import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.gui.screens.options.controls.ControlsScreen;
+import net.minecraft.client.gui.screens.options.controls.KeyBindsScreen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 
@@ -48,7 +48,7 @@ public final class EagleFineOptionsScreen extends Screen {
         LinearLayout actions = LinearLayout.horizontal().spacing(8);
         actions.addChild(Button.builder(
                 Component.translatable("eaglefine.options.controls"),
-                button -> this.minecraft.gui.setScreen(new ControlsScreen(this, this.minecraft.options)))
+                button -> this.minecraft.gui.setScreen(new KeyBindsScreen(this, this.minecraft.options)))
                 .width(150).build());
         actions.addChild(Button.builder(
                 Component.translatable("eaglefine.options.reset"),
