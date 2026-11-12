@@ -364,8 +364,7 @@ public class TitleScreen extends Screen {
          graphics.text(this.font, Component.translatableWithFallback("eagler.menu.brand", "Eaglercraft %s",
                   net.lax1dude.eaglercraft.v1_8.EaglercraftVersion.projectForkVersion),
             2, this.height - 20, ARGB.white(widgetFade));
-         graphics.text(this.font, Component.translatableWithFallback("eagler.menu.rewrittenBy", "Rewritten by %s",
-                  net.lax1dude.eaglercraft.v1_8.EaglercraftVersion.projectForkVendor),
+         graphics.text(this.font, Component.literal("Made by Untitled"),
             2, this.height - 10, ARGB.white(widgetFade));
       } else {
          graphics.text(this.font, versionString, 2, this.height - 10, ARGB.white(widgetFade));
