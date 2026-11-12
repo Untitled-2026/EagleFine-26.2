@@ -3,7 +3,7 @@ package dev.eaglefine;
 import java.util.Collections;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Options;
-import net.minecraft.client.input.InputConstants;
+import com.mojang.blaze3d.platform.InputConstants;
 
 /**
  * Hold-to-zoom camera feature, inspired by OptiFine's zoom control.
