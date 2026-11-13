@@ -100,8 +100,12 @@ is inactive and include fallbacks for unsupported browser/GPU features.
 
 ## First standalone test build
 
-The checked-in workspace does not include the original OGG sound files or
-optional music EPK. The current browser test build therefore generates a valid
-empty `sounds.epk`, skips the optional music pack, and runs silently. It is
-intended to validate startup, settings, Zoom and graphics experiments; it is
-not a sound-enabled release build.
+The checked-in workspace does not include the original OGG sound files. The
+default standalone build therefore generates an empty sounds.epk and remains
+silent, including in public CI. For a local audio-enabled build, prepare files
+from your own official Minecraft Java 26.2 asset cache with
+`node wasm-toolchain/restore-game-audio.js`, then run
+`node wasm-toolchain/build-single-html.js --with-audio --with-music`. The helper
+verifies local files by SHA-1 and size, requires FFmpeg 6.1.1 or newer with
+libopus, and writes only to the ignored `.eaglefine-audio/` directory. It does
+not download or commit audio files. Do not publish audio-enabled artifacts.

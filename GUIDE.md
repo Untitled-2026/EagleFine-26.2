@@ -26,11 +26,22 @@ Install build tools in the patcher to set up Java and Node locally. The patcher
 uses Java 17 for extraction and Java 25 for compilation. Keep the supplied input
 files together; their hashes identify the supported version.
 
-If sounds or music are missing, Get game audio can fetch the official sound
-objects and rebuild the archives. Install FFmpeg 6.1.1 and select it first;
-the patcher does not install FFmpeg. Get official resources rebuilds the six
-external files used by the overlay. These actions do not create the source
-patch bundle, project skeleton, or overlay supplied with the patcher.
+For a local EagleFine audio build, install FFmpeg 6.1.1 or newer with the
+libopus encoder. Make sure the official Minecraft Java 26.2 audio files are
+already present in your local launcher asset cache. Then run from the EagleFine
+project root:
+
+```sh
+node wasm-toolchain/restore-game-audio.js
+node wasm-toolchain/build-single-html.js --with-audio --with-music --output EagleFine-26.2-audio.html
+```
+
+The restore script reads Mojang's version metadata, verifies files from your
+local asset cache by SHA-1 and size, keeps effects as Vorbis OGG, and transcodes
+music/records to Opus-in-Ogg for the browser decoder. It does not download the
+audio files. Local inputs stay under the ignored `.eaglefine-audio/` directory.
+Public GitHub Actions builds deliberately remain silent; keep audio-enabled
+HTML and EPK files local and do not publish them.
 
 Allow about 30 minutes on a reasonably capable PC. One completed local build
 took 41 minutes 46 seconds. Downloads and slower hardware can add time.

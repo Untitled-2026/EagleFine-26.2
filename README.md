@@ -26,7 +26,7 @@ The first standalone EagleFine HTML test client has been built and opened in a b
 
 ### Known limitations
 
-- **Audio can be restored locally:** `wasm-toolchain/restore-game-audio.js` verifies audio files from a local Minecraft Java 26.2 asset cache, keeps effects as Vorbis OGG, and transcodes music/records to Opus-in-Ogg. FFmpeg 6.1.1 or newer with libopus support is required. The helper does not download audio, commit it, or add it to public GitHub Actions builds.
+- **Audio can be restored locally:** `wasm-toolchain/restore-game-audio.js` verifies audio files from a local Minecraft Java 26.2 asset cache, keeps effects as Vorbis OGG, and transcodes music/records to Opus-in-Ogg. FFmpeg 6.1.1 or newer with libopus support is required. The helper reads the audio files from your local launcher cache and does not download, commit, or add them to public GitHub Actions builds.
 - Dynamic Lights supports item/display sources, glowing and burning entities, primed TNT and lightning; not every visual particle or shader effect is treated as block light.
 - Dynamic Lights has no artificial source-count or visited-cell cap. Large numbers of nearby sources can increase frame time and memory use, so performance testing is required.
 - Browser/WebGL capabilities may limit some advanced OptiFine-style features.
@@ -49,7 +49,7 @@ The project uses the upstream Eaglercraft 26.2 Gradle workspace. The documented 
 
 On Windows, use `gradlew.bat` instead of `./gradlew`.
 
-The standalone HTML build is more memory-intensive than the Java compile check. GitHub Actions is configured to build it on a GitHub-hosted Ubuntu runner.
+The standalone HTML build is more memory-intensive than the Java compile check. GitHub Actions builds a silent test client on a GitHub-hosted Ubuntu runner. The audio-enabled build is a separate local-only option using your own official game assets.
 
 ## Project principles
 

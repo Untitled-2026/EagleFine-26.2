@@ -54,4 +54,4 @@
 
 ## Current scope
 
-Milestones 0 and 1 are complete. Zoom, settings, credits branding, and the expanded uncapped Dynamic Lights path are in source. Dynamic Lights requires browser visual, multiplayer, and performance testing. Local audio restoration is implemented; public CI builds intentionally remain silent.
+Milestones 0 and 1 are complete. Zoom, settings, credits branding, and the expanded uncapped Dynamic Lights path are in source. Dynamic Lights requires browser visual, multiplayer, and performance testing. Local audio restoration and packaging are implemented; public CI builds intentionally remain silent, and local audio-enabled playback still needs testing.
