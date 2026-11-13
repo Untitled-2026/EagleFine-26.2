@@ -26,8 +26,10 @@
 
 - [ ] Investigate the existing texture-atlas and block-model pipeline.
 - [ ] Prototype connected-texture rules.
-- [x] Implement a first-pass held-item Dynamic Lights path for inline and mesh-worker chunk compilation.
-- [ ] Add visual comparisons and regression checks.
+- [x] Implement Dynamic Lights for held, dropped and displayed items, glowing/burning entities, primed TNT and lightning.
+- [x] Remove artificial source-count and lit-cell cutoffs; expose source, cell and rebuild-time counters.
+- [x] Propagate light with block-opacity-aware attenuation in inline and mesh-worker chunk compilation.
+- [ ] Add visual comparisons and frame-time/memory regression checks for uncapped Dynamic Lights.
 
 ## Milestone 4 — performance
 
@@ -52,4 +54,4 @@
 
 ## Current scope
 
-Milestones 0 and 1 are complete. Zoom, the settings page, credits branding, and the core item-based Dynamic Lights implementation are in source. Dynamic Lights still requires browser visual, multiplayer, and performance testing; the current test client remains silent until the audio-resource step is integrated.
+Milestones 0 and 1 are complete. Zoom, settings, credits branding, and the expanded uncapped Dynamic Lights path are in source. Dynamic Lights requires browser visual, multiplayer, and performance testing. Local audio restoration is implemented; public CI builds intentionally remain silent.

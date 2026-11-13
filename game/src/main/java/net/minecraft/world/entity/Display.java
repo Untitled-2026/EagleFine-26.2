@@ -487,7 +487,7 @@ public abstract class Display extends Entity {
          }
       }
 
-      private BlockState getBlockState() {
+      public BlockState getBlockState() {
          return this.entityData.get(DATA_BLOCK_STATE_ID);
       }
 
@@ -583,7 +583,7 @@ public abstract class Display extends Entity {
          }
       }
 
-      private ItemStack getItemStack() {
+      public ItemStack getItemStack() {
          return this.entityData.get(DATA_ITEM_STACK_ID);
       }
 

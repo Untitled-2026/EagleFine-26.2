@@ -16,7 +16,7 @@ The first standalone EagleFine HTML test client has been built and opened in a b
 - **Key binding access:** the EagleFine settings shortcut opens the Key Binds screen directly, where the Zoom key can be changed.
 - **Main-menu branding:** the lower-left credit reads "Made by Untitled".
 - **Credits panel branding:** the Eaglercraft credits panel also reads "Made by Untitled".
-- **Dynamic Lights:** light-emitting items in either hand of nearby players and mobs, plus dropped light-emitting items, cast dynamic block light. Light propagates through blocks according to their light dampening, so opaque blocks block the light. The system updates when light sources move, appear, disappear, or when nearby block opacity changes. Inline and mesh-worker chunk compilation use the same light field.
+- **Dynamic Lights:** light-emitting items in either hand of nearby living entities, dropped items, item frames and item/block displays cast light. Glowing or burning entities, primed TNT and lightning also emit light. Light propagates through blocks according to their light dampening, so opaque blocks block it. Inline and mesh-worker chunk compilation use the same light field. Source-count and visited-cell caps have been removed; normal 15-level light falloff determines natural reach.
 
 ### Tested
 
@@ -26,18 +26,18 @@ The first standalone EagleFine HTML test client has been built and opened in a b
 
 ### Known limitations
 
-- **No sound or music yet.** The current source workspace does not contain the original Minecraft sound files or audio archives, and the GitHub Actions HTML workflow does not add them. The upstream build guide documents a separate official "Get game audio" process that rebuilds the audio archives and requires FFmpeg 6.1.1. That process has not yet been integrated into EagleFine's automated build.
-- Dynamic Lights is item-based: arbitrary glowing entities, projectiles, and other non-item light sources are not included.
-- The light-field build is bounded to 64 nearby sources and 131,072 affected block cells to protect browser performance. Crowded scenes may therefore omit the farthest sources or the tail of the field.
+- **Audio can be restored locally:** `wasm-toolchain/restore-game-audio.js` verifies audio files from a local Minecraft Java 26.2 asset cache, keeps effects as Vorbis OGG, and transcodes music/records to Opus-in-Ogg. FFmpeg 6.1.1 or newer with libopus support is required. The helper does not download audio, commit it, or add it to public GitHub Actions builds.
+- Dynamic Lights supports item/display sources, glowing and burning entities, primed TNT and lightning; not every visual particle or shader effect is treated as block light.
+- Dynamic Lights has no artificial source-count or visited-cell cap. Large numbers of nearby sources can increase frame time and memory use, so performance testing is required.
 - Browser/WebGL capabilities may limit some advanced OptiFine-style features.
 
-## Next milestone: Validate Dynamic Lights and restore audio
+## Next milestone: Performance and audio validation
 
-1. Test held torches, lanterns, glow berries and lava buckets in dark areas.
-2. Test dropped light items and light-emitting items held by nearby players or mobs.
-3. Check that solid walls block dynamic light and that placing or removing blocks updates the lighting.
-4. Measure chunk rebuild cost and frame-time impact while moving with a light source.
-5. Integrate the documented audio-resource build step without committing restricted assets, then continue with Connected Textures, Custom Sky, fog controls and shader experiments.
+1. Compare frame rate and memory with Dynamic Lights off and on in the same cave or crowded scene.
+2. Test held, dropped and displayed light items, glowing/burning entities, primed TNT, lightning, and opaque-block occlusion.
+3. Check the Dynamic Lights counters (`getLastFieldSourceCount`, `getLastFieldCellCount`, and `getLastFieldBuildNanos`) while moving through a light-heavy area.
+4. Restore audio from a local Minecraft Java 26.2 asset cache with `node wasm-toolchain/restore-game-audio.js`, then build using `--with-audio --with-music`.
+5. Keep audio-enabled builds private/local; continue with Connected Textures, Custom Sky, fog controls and shader experiments.
 
 ## Development
 

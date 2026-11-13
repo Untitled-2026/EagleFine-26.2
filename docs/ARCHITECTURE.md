@@ -20,8 +20,7 @@ The package deliberately avoids putting EagleFine classes in Minecraft's
 - `EagleFineFeatureRegistry`: explicit feature registry.
 - `EagleFineZoomFeature`: hold-to-zoom feature and registered Minecraft key.
 - `EagleFineDynamicLightsFeature`: metadata for the Dynamic Lights setting.
-- `EagleFineDynamicLights`: held-item light-source tracking, section invalidation,
-  and distance-based light sampling.
+- `EagleFineDynamicLights`: item, display, glowing/burning-entity, TNT and lightning source tracking, opacity-aware propagation, section invalidation, and build statistics.
 
 ## Startup integration
 
@@ -47,10 +46,10 @@ browser configuration.
 
 ## Dynamic Lights
 
-Dynamic Lights tracks light-emitting block items in either hand of nearby
-living entities and also tracks dropped item entities. It includes item-specific
-sources such as glow berries and lava buckets. The collector is limited to the
-64 nearest sources around the local player to keep the browser workload bounded.
+Dynamic Lights tracks block-emitting items held by nearby living entities,
+dropped in the world, stored in item frames, or shown by item displays. It also
+tracks emissive block displays and falling blocks, glowing and burning entities
+(including charged Blazes), primed TNT, lightning, and glow item frames.
 
 The manager builds a block-light field on the client thread and publishes an
 immutable snapshot for rendering. Light propagates through neighboring blocks
@@ -58,16 +57,21 @@ using each block state's light dampening, so opaque blocks stop light while
 less-opaque blocks reduce it. Both inline section compilation and mesh-worker
 snapshot compilation read the same field.
 
-Changed source positions invalidate the old and new affected section regions.
-Changes to block light dampening near an active source mark the field dirty and
-invalidate the affected region, so building or removing a wall updates the
-dynamic light on the next client tick. The propagated field is capped at
-131,072 block cells as a safety limit for unusually crowded scenes.
+There are no artificial source-count or visited-cell caps. Light naturally
+terminates when its level attenuates to zero; with level-15 sources and at least
+one attenuation per step, the maximum natural propagation reach is 14 blocks.
+The manager exposes the most recent source count, lit-cell count, and rebuild
+time so a browser session can be profiled.
 
-This completes the core item-based Dynamic Lights path. It still requires
-visual, multiplayer and performance testing in the browser client; it is not
-intended to provide full OptiFine feature parity for arbitrary glowing entities
-or non-item light sources.
+Changed source positions are compared using packed block-position lookups and
+their invalidation bounds are coalesced into one section-range update. Changes
+to block light dampening near an active source mark the field dirty and
+invalidate affected sections, so building or removing a wall updates lighting
+on the next client tick.
+
+This completes the core item/entity Dynamic Lights path. It still needs visual,
+multiplayer, and performance testing in the browser client. Not every visual
+glow shader or entity effect is treated as a block-light source.
 
 ## Settings screen
 
@@ -84,7 +88,7 @@ EagleFine currently:
 - loads and saves a separate configuration;
 - registers a hold-to-zoom key;
 - smoothly changes the world-camera FOV while the key is held;
-- provides item-based Dynamic Lights for nearby living entities and dropped items, with block-opacity-aware propagation;
+- provides uncapped item/display/entity Dynamic Lights with block-opacity-aware propagation and build counters;
 - does not yet implement connected textures or shader packs;
 - still needs sound restoration and further browser/GPU compatibility testing.
 

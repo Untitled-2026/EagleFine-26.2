@@ -2,19 +2,22 @@ package dev.eaglefine;
 
 import it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
+import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.decoration.GlowItemFrame;
+import net.minecraft.world.entity.decoration.ItemFrame;
+import net.minecraft.world.entity.item.FallingBlockEntity;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.item.PrimedTnt;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -23,20 +26,18 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 
 /**
- * Dynamic block lighting from light-emitting items held by nearby living
- * entities or dropped in the world.
+ * Dynamic block lighting from emissive items, displayed blocks, glowing or
+ * burning entities, primed TNT, and lightning in the nearby client world.
  *
- * <p>The client tick builds an immutable light-field snapshot. Inline chunk
- * compilation and mesh workers read the same snapshot without touching the
- * live world. Light is propagated through blocks using each block state's
- * light dampening, and affected sections are invalidated when sources or
- * nearby block opacity change.</p>
+ * <p>The light field is rebuilt on the client thread and then published as an
+ * immutable snapshot. Inline chunk compilation and mesh workers read that
+ * same snapshot without querying the live entity list. There are no source
+ * count or visited-cell caps: the only natural reach limit is Minecraft's
+ * 15-level block-light falloff.</p>
  */
 public final class EagleFineDynamicLights {
     private static final int MAX_LIGHT_LEVEL = 15;
     private static final int MAX_RADIUS = MAX_LIGHT_LEVEL - 1;
-    private static final int MAX_ACTIVE_SOURCES = 64;
-    private static final int MAX_LIGHT_CELLS = 131072;
 
     private static final int[] NEIGHBOR_X = { 1, -1, 0, 0, 0, 0 };
     private static final int[] NEIGHBOR_Y = { 0, 0, 1, -1, 0, 0 };
@@ -47,6 +48,9 @@ public final class EagleFineDynamicLights {
 
     private static volatile LightSource[] activeSources = NO_SOURCES;
     private static volatile Long2ByteOpenHashMap activeLightLevels = NO_LIGHT_LEVELS;
+    private static volatile long lastFieldBuildNanos;
+    private static volatile int lastFieldCellCount;
+    private static volatile int lastFieldSourceCount;
 
     private static ClientLevel trackedLevel;
     private static boolean lightFieldDirty;
@@ -61,13 +65,16 @@ public final class EagleFineDynamicLights {
     private EagleFineDynamicLights() {
     }
 
-    public static void tick(net.minecraft.client.Minecraft minecraft, EagleFineConfig config) {
+    public static void tick(Minecraft minecraft, EagleFineConfig config) {
         ClientLevel level = minecraft.level;
         if (level == null) {
             trackedLevel = null;
             activeSources = NO_SOURCES;
             activeLightLevels = NO_LIGHT_LEVELS;
             lightFieldDirty = false;
+            lastFieldSourceCount = 0;
+            lastFieldCellCount = 0;
+            lastFieldBuildNanos = 0L;
             clearDirtyBlockBounds();
             return;
         }
@@ -89,16 +96,21 @@ public final class EagleFineDynamicLights {
         LightSource[] previousSources = activeSources;
         if (!sameSources(previousSources, nextSources)) {
             if (!changedLevel) {
-                markChangedSourceAreasDirty(level, previousSources, nextSources);
+                markChangedSourceAreasDirty(previousSources, nextSources);
             }
             activeSources = nextSources;
             lightFieldDirty = true;
         }
 
         if (lightFieldDirty) {
-            activeLightLevels = nextSources.length == 0
-                    ? NO_LIGHT_LEVELS
-                    : buildLightField(level, nextSources);
+            if (nextSources.length == 0) {
+                activeLightLevels = NO_LIGHT_LEVELS;
+                lastFieldSourceCount = 0;
+                lastFieldCellCount = 0;
+                lastFieldBuildNanos = 0L;
+            } else {
+                activeLightLevels = buildLightField(level, nextSources);
+            }
 
             if (hasDirtyBlockBounds) {
                 markDirtyBlockArea(level);
@@ -108,10 +120,6 @@ public final class EagleFineDynamicLights {
         }
     }
 
-    /**
-     * Notifies the light manager when a nearby block's light dampening changes.
-     * The field is rebuilt on the next client tick, before the next render pass.
-     */
     public static void onBlockChanged(
             ClientLevel level,
             BlockPos pos,
@@ -138,15 +146,28 @@ public final class EagleFineDynamicLights {
         }
     }
 
-    /** Returns the propagated dynamic block-light level at a block position. */
     public static int getLightLevel(int blockX, int blockY, int blockZ) {
         return activeLightLevels.get(BlockPos.asLong(blockX, blockY, blockZ)) & 0xFF;
+    }
+
+    public static int getLastFieldSourceCount() {
+        return lastFieldSourceCount;
+    }
+
+    public static int getLastFieldCellCount() {
+        return lastFieldCellCount;
+    }
+
+    public static long getLastFieldBuildNanos() {
+        return lastFieldBuildNanos;
     }
 
     private static LightSource[] collectSources(ClientLevel level, LocalPlayer player) {
         Map<Long, LightSource> byPosition = new HashMap<Long, LightSource>();
         addLivingEntitySources(byPosition, player);
 
+        // A level-15 source loses at least one light level per block, so
+        // sources farther than 14 blocks cannot contribute to this player.
         double range = MAX_RADIUS + 1.0D;
         AABB searchBounds = new AABB(
                 player.getX() - range,
@@ -162,42 +183,76 @@ public final class EagleFineDynamicLights {
             }
 
             if (entity instanceof ItemEntity itemEntity) {
-                ItemStack stack = itemEntity.getItem();
-                int x = floor(itemEntity.getX());
-                int y = floor(itemEntity.getY() + ItemEntity.EYE_HEIGHT);
-                int z = floor(itemEntity.getZ());
-                addItemSource(byPosition, stack, x, y, z);
+                addItemSource(
+                        byPosition,
+                        itemEntity.getItem(),
+                        floor(itemEntity.getX()),
+                        floor(itemEntity.getY() + ItemEntity.EYE_HEIGHT),
+                        floor(itemEntity.getZ()));
             } else if (entity instanceof LivingEntity livingEntity) {
                 addLivingEntitySources(byPosition, livingEntity);
+            } else if (entity instanceof ItemFrame itemFrame) {
+                addItemSource(
+                        byPosition,
+                        itemFrame.getItem(),
+                        floor(itemFrame.getX()),
+                        floor(itemFrame.getY()),
+                        floor(itemFrame.getZ()));
+            } else if (entity instanceof Display.ItemDisplay itemDisplay) {
+                addItemSource(
+                        byPosition,
+                        itemDisplay.getItemStack(),
+                        floor(itemDisplay.getX()),
+                        floor(itemDisplay.getY()),
+                        floor(itemDisplay.getZ()));
+            } else if (entity instanceof Display.BlockDisplay blockDisplay) {
+                addBlockStateSource(
+                        byPosition,
+                        blockDisplay.getBlockState(),
+                        floor(blockDisplay.getX()),
+                        floor(blockDisplay.getY()),
+                        floor(blockDisplay.getZ()));
+            } else if (entity instanceof FallingBlockEntity fallingBlock) {
+                addBlockStateSource(
+                        byPosition,
+                        fallingBlock.getBlockState(),
+                        floor(fallingBlock.getX()),
+                        floor(fallingBlock.getY()),
+                        floor(fallingBlock.getZ()));
+            }
+
+            if (entity instanceof GlowItemFrame) {
+                addSource(byPosition, floor(entity.getX()), floor(entity.getY()), floor(entity.getZ()), 8);
+            }
+
+            if (entity.isCurrentlyGlowing()) {
+                addSource(
+                        byPosition,
+                        floor(entity.getX()),
+                        floor(entity.getY() + entity.getBbHeight() * 0.5D),
+                        floor(entity.getZ()),
+                        8);
+            }
+
+            // This includes burning mobs, burning projectiles, and charged
+            // Blazes (whose isOnFire implementation reflects their charge).
+            if (entity.isOnFire()) {
+                addSource(
+                        byPosition,
+                        floor(entity.getX()),
+                        floor(entity.getY() + entity.getBbHeight() * 0.5D),
+                        floor(entity.getZ()),
+                        MAX_LIGHT_LEVEL);
+            }
+
+            if (entity instanceof PrimedTnt || entity instanceof LightningBolt) {
+                addSource(byPosition, floor(entity.getX()), floor(entity.getY()), floor(entity.getZ()), MAX_LIGHT_LEVEL);
             }
         });
 
-        List<LightSource> result = new ArrayList<LightSource>(byPosition.values());
-        final int playerX = floor(player.getX());
-        final int playerY = floor(player.getEyeY() - 0.25D);
-        final int playerZ = floor(player.getZ());
-        Collections.sort(result, new Comparator<LightSource>() {
-            @Override
-            public int compare(LightSource first, LightSource second) {
-                int firstDistance = distanceSquared(first, playerX, playerY, playerZ);
-                int secondDistance = distanceSquared(second, playerX, playerY, playerZ);
-                int byDistance = Integer.compare(firstDistance, secondDistance);
-                if (byDistance != 0) {
-                    return byDistance;
-                }
-                int byX = Integer.compare(first.x, second.x);
-                if (byX != 0) {
-                    return byX;
-                }
-                int byY = Integer.compare(first.y, second.y);
-                return byY != 0 ? byY : Integer.compare(first.z, second.z);
-            }
-        });
-
-        if (result.size() > MAX_ACTIVE_SOURCES) {
-            result = new ArrayList<LightSource>(result.subList(0, MAX_ACTIVE_SOURCES));
-        }
-        return result.isEmpty() ? NO_SOURCES : result.toArray(new LightSource[result.size()]);
+        return byPosition.isEmpty()
+                ? NO_SOURCES
+                : byPosition.values().toArray(new LightSource[byPosition.size()]);
     }
 
     private static void addLivingEntitySources(Map<Long, LightSource> sources, LivingEntity entity) {
@@ -212,16 +267,25 @@ public final class EagleFineDynamicLights {
         if (stack == null || stack.isEmpty()) {
             return;
         }
+        addSource(sources, x, y, z, heldItemLightLevel(stack.getItem()));
+    }
 
-        int lightLevel = heldItemLightLevel(stack.getItem());
-        if (lightLevel <= 0) {
+    private static void addBlockStateSource(Map<Long, LightSource> sources, BlockState state, int x, int y, int z) {
+        if (state != null && !state.isAir()) {
+            addSource(sources, x, y, z, state.getLightEmission());
+        }
+    }
+
+    private static void addSource(Map<Long, LightSource> sources, int x, int y, int z, int lightLevel) {
+        int level = Math.max(0, Math.min(MAX_LIGHT_LEVEL, lightLevel));
+        if (level <= 0) {
             return;
         }
 
         long key = BlockPos.asLong(x, y, z);
         LightSource existing = sources.get(Long.valueOf(key));
-        if (existing == null || lightLevel > existing.lightLevel) {
-            sources.put(Long.valueOf(key), new LightSource(x, y, z, lightLevel));
+        if (existing == null || level > existing.lightLevel) {
+            sources.put(Long.valueOf(key), new LightSource(x, y, z, level));
         }
     }
 
@@ -233,12 +297,13 @@ public final class EagleFineDynamicLights {
         if (item == Items.GLOW_BERRIES) {
             level = Math.max(level, 14);
         } else if (item == Items.LAVA_BUCKET) {
-            level = Math.max(level, 15);
+            level = Math.max(level, MAX_LIGHT_LEVEL);
         }
         return Math.max(0, Math.min(MAX_LIGHT_LEVEL, level));
     }
 
     private static Long2ByteOpenHashMap buildLightField(ClientLevel level, LightSource[] sources) {
+        long started = System.nanoTime();
         Long2ByteOpenHashMap lightLevels = createEmptyLightField();
         ArrayDeque<LightNode> queue = new ArrayDeque<LightNode>();
 
@@ -256,7 +321,9 @@ public final class EagleFineDynamicLights {
         int maxY = minY + level.getHeight();
         BlockPos.MutableBlockPos neighborPos = new BlockPos.MutableBlockPos();
 
-        while (!queue.isEmpty() && lightLevels.size() < MAX_LIGHT_CELLS) {
+        // No arbitrary work or cell-count cutoff: propagation ends naturally
+        // when every path has attenuated to block-light level zero.
+        while (!queue.isEmpty()) {
             LightNode current = queue.removeFirst();
             long currentKey = BlockPos.asLong(current.x, current.y, current.z);
             if ((lightLevels.get(currentKey) & 0xFF) != current.lightLevel) {
@@ -288,6 +355,9 @@ public final class EagleFineDynamicLights {
             }
         }
 
+        lastFieldBuildNanos = System.nanoTime() - started;
+        lastFieldCellCount = lightLevels.size();
+        lastFieldSourceCount = sources.length;
         return lightLevels;
     }
 
@@ -296,49 +366,45 @@ public final class EagleFineDynamicLights {
             return false;
         }
 
+        Long2ByteOpenHashMap secondByPosition = sourceLevels(second);
         for (int i = 0; i < first.length; ++i) {
-            if (!containsSource(second, first[i])) {
+            LightSource source = first[i];
+            int level = secondByPosition.get(BlockPos.asLong(source.x, source.y, source.z)) & 0xFF;
+            if (level != source.lightLevel) {
                 return false;
             }
         }
         return true;
     }
 
-    private static boolean containsSource(LightSource[] sources, LightSource target) {
+    private static Long2ByteOpenHashMap sourceLevels(LightSource[] sources) {
+        Long2ByteOpenHashMap result = createEmptyLightField();
         for (int i = 0; i < sources.length; ++i) {
             LightSource source = sources[i];
-            if (source.x == target.x && source.y == target.y && source.z == target.z
-                    && source.lightLevel == target.lightLevel) {
-                return true;
-            }
+            result.put(BlockPos.asLong(source.x, source.y, source.z), (byte) source.lightLevel);
         }
-        return false;
+        return result;
     }
 
-    private static void markChangedSourceAreasDirty(
-            ClientLevel level,
-            LightSource[] previous,
-            LightSource[] next) {
+    private static void markChangedSourceAreasDirty(LightSource[] previous, LightSource[] next) {
+        Long2ByteOpenHashMap previousByPosition = sourceLevels(previous);
+        Long2ByteOpenHashMap nextByPosition = sourceLevels(next);
+
         for (int i = 0; i < previous.length; ++i) {
-            if (!containsSource(next, previous[i])) {
-                markSourceAreaDirty(level, previous[i]);
+            LightSource source = previous[i];
+            int nextLevel = nextByPosition.get(BlockPos.asLong(source.x, source.y, source.z)) & 0xFF;
+            if (nextLevel != source.lightLevel) {
+                includeDirtyBlock(source.x, source.y, source.z);
             }
         }
-        for (int i = 0; i < next.length; ++i) {
-            if (!containsSource(previous, next[i])) {
-                markSourceAreaDirty(level, next[i]);
-            }
-        }
-    }
 
-    private static void markSourceAreaDirty(ClientLevel level, LightSource source) {
-        level.setSectionRangeDirty(
-                SectionPos.blockToSectionCoord(source.x - MAX_RADIUS),
-                SectionPos.blockToSectionCoord(source.y - MAX_RADIUS),
-                SectionPos.blockToSectionCoord(source.z - MAX_RADIUS),
-                SectionPos.blockToSectionCoord(source.x + MAX_RADIUS),
-                SectionPos.blockToSectionCoord(source.y + MAX_RADIUS),
-                SectionPos.blockToSectionCoord(source.z + MAX_RADIUS));
+        for (int i = 0; i < next.length; ++i) {
+            LightSource source = next[i];
+            int previousLevel = previousByPosition.get(BlockPos.asLong(source.x, source.y, source.z)) & 0xFF;
+            if (previousLevel != source.lightLevel) {
+                includeDirtyBlock(source.x, source.y, source.z);
+            }
+        }
     }
 
     private static void markDirtyBlockArea(ClientLevel level) {
@@ -371,13 +437,6 @@ public final class EagleFineDynamicLights {
         hasDirtyBlockBounds = false;
         dirtyMinX = dirtyMinY = dirtyMinZ = 0;
         dirtyMaxX = dirtyMaxY = dirtyMaxZ = 0;
-    }
-
-    private static int distanceSquared(LightSource source, int x, int y, int z) {
-        int dx = source.x - x;
-        int dy = source.y - y;
-        int dz = source.z - z;
-        return dx * dx + dy * dy + dz * dz;
     }
 
     private static int floor(double value) {
