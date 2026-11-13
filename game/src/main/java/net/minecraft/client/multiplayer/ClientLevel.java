@@ -1,5 +1,7 @@
 package net.minecraft.client.multiplayer;
 
+import dev.eaglefine.EagleFineDynamicLights;
+
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -861,6 +863,7 @@ public class ClientLevel extends Level implements BlockAndTintGetter, CacheSlot.
    @Override
    public void sendBlockUpdated(final BlockPos pos, final BlockState old, final BlockState current, final @Block.UpdateFlags int updateFlags) {
       this.levelExtractor.blockChanged(pos, updateFlags);
+      EagleFineDynamicLights.onBlockChanged(this, pos, old, current);
    }
 
    @Override

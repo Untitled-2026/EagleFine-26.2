@@ -16,6 +16,6 @@ public final class EagleFineDynamicLightsFeature implements EagleFineFeature {
 
     @Override
     public String getDescription() {
-        return "Adds nearby light from emissive items held by the local player.";
+        return "Adds nearby light from emissive items held by entities or dropped in the world.";
     }
 }

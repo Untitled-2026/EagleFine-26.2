@@ -16,7 +16,7 @@ The first standalone EagleFine HTML test client has been built and opened in a b
 - **Key binding access:** the EagleFine settings shortcut opens the Key Binds screen directly, where the Zoom key can be changed.
 - **Main-menu branding:** the lower-left credit reads "Made by Untitled".
 - **Credits panel branding:** the Eaglercraft credits panel also reads "Made by Untitled".
-- **Dynamic Lights — first pass:** emissive block items held in either hand by the local player cast distance-attenuated block light. Nearby chunk sections are rebuilt when the held source changes block position or intensity. Both inline and mesh-worker chunk compilation receive the dynamic-light values.
+- **Dynamic Lights:** light-emitting items in either hand of nearby players and mobs, plus dropped light-emitting items, cast dynamic block light. Light propagates through blocks according to their light dampening, so opaque blocks block the light. The system updates when light sources move, appear, disappear, or when nearby block opacity changes. Inline and mesh-worker chunk compilation use the same light field.
 
 ### Tested
 
@@ -27,17 +27,17 @@ The first standalone EagleFine HTML test client has been built and opened in a b
 ### Known limitations
 
 - **No sound or music yet.** The current source workspace does not contain the original Minecraft sound files or audio archives, and the GitHub Actions HTML workflow does not add them. The upstream build guide documents a separate official "Get game audio" process that rebuilds the audio archives and requires FFmpeg 6.1.1. That process has not yet been integrated into EagleFine's automated build.
-- Dynamic Lights currently supports held light items from the local player only. Dropped items, other players and mobs are not light sources yet.
-- The first Dynamic Lights pass uses distance attenuation but does not yet trace light around opaque blocks.
+- Dynamic Lights is item-based: arbitrary glowing entities, projectiles, and other non-item light sources are not included.
+- The light-field build is bounded to 64 nearby sources and 131,072 affected block cells to protect browser performance. Crowded scenes may therefore omit the farthest sources or the tail of the field.
 - Browser/WebGL capabilities may limit some advanced OptiFine-style features.
 
-## Next milestone: Expand Dynamic Lights and restore audio
+## Next milestone: Validate Dynamic Lights and restore audio
 
-1. Build a fresh HTML client and test held torches, lanterns, glow berries and lava buckets in dark areas.
-2. Measure chunk rebuild cost and frame-time impact while moving with a light source.
-3. Add dropped-item and other-entity light sources, then improve light occlusion.
-4. Integrate the documented audio-resource build step without committing restricted assets.
-5. Continue with Connected Textures, Custom Sky, fog controls and shader experiments.
+1. Test held torches, lanterns, glow berries and lava buckets in dark areas.
+2. Test dropped light items and light-emitting items held by nearby players or mobs.
+3. Check that solid walls block dynamic light and that placing or removing blocks updates the lighting.
+4. Measure chunk rebuild cost and frame-time impact while moving with a light source.
+5. Integrate the documented audio-resource build step without committing restricted assets, then continue with Connected Textures, Custom Sky, fog controls and shader experiments.
 
 ## Development
 

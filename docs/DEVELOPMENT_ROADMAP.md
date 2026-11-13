@@ -52,4 +52,4 @@
 
 ## Current scope
 
-Milestones 0 and 1 are complete. Zoom, the settings page, credits branding, and a first-pass held-item Dynamic Lights implementation are in source. Dynamic Lights still requires browser visual/performance testing; the current test client remains silent until the audio-resource step is integrated.
+Milestones 0 and 1 are complete. Zoom, the settings page, credits branding, and the core item-based Dynamic Lights implementation are in source. Dynamic Lights still requires browser visual, multiplayer, and performance testing; the current test client remains silent until the audio-resource step is integrated.

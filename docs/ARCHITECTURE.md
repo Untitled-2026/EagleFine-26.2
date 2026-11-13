@@ -45,22 +45,29 @@ The default zoom factor is 4x; configurable range is 2x through 16x. Smooth
 zoom is enabled by default. These preferences are stored in EagleFine's own
 browser configuration.
 
-## Dynamic Lights — first implementation
+## Dynamic Lights
 
-The first Dynamic Lights pass supports emissive block items held in either hand
-by the local player, plus glow berries and a lava bucket. It calculates
-distance-attenuated block light with a maximum 15-level source.
+Dynamic Lights tracks light-emitting block items in either hand of nearby
+living entities and also tracks dropped item entities. It includes item-specific
+sources such as glow berries and lava buckets. The collector is limited to the
+64 nearest sources around the local player to keep the browser workload bounded.
 
-When a held light source changes block position or intensity, the surrounding
-chunk sections are marked dirty. Inline section compilation reads dynamic light
-through `RenderSectionRegion.getBrightness`. The mesh-worker snapshot builder
-writes the same values into block-light nibbles before dispatch, so both
-rendering paths use the same source data.
+The manager builds a block-light field on the client thread and publishes an
+immutable snapshot for rendering. Light propagates through neighboring blocks
+using each block state's light dampening, so opaque blocks stop light while
+less-opaque blocks reduce it. Both inline section compilation and mesh-worker
+snapshot compilation read the same field.
 
-This is an initial implementation, not full OptiFine parity. It does not yet
-include dropped items, other players or mobs as light sources, or occlusion by
-intervening solid blocks. The result requires visual and performance testing in
-the browser client.
+Changed source positions invalidate the old and new affected section regions.
+Changes to block light dampening near an active source mark the field dirty and
+invalidate the affected region, so building or removing a wall updates the
+dynamic light on the next client tick. The propagated field is capped at
+131,072 block cells as a safety limit for unusually crowded scenes.
+
+This completes the core item-based Dynamic Lights path. It still requires
+visual, multiplayer and performance testing in the browser client; it is not
+intended to provide full OptiFine feature parity for arbitrary glowing entities
+or non-item light sources.
 
 ## Settings screen
 
@@ -77,7 +84,7 @@ EagleFine currently:
 - loads and saves a separate configuration;
 - registers a hold-to-zoom key;
 - smoothly changes the world-camera FOV while the key is held;
-- provides a first-pass local-player held-item Dynamic Lights implementation;
+- provides item-based Dynamic Lights for nearby living entities and dropped items, with block-opacity-aware propagation;
 - does not yet implement connected textures or shader packs;
 - still needs sound restoration and further browser/GPU compatibility testing.
 
