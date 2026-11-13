@@ -30,6 +30,7 @@ const fastPackage = args.has("--fast-package");
 // compatibility build.
 const withoutMusic = !args.has("--with-music");
 const withMusic = !withoutMusic;
+const withAudio = args.has("--with-audio") || withMusic;
 const MAX_BUILD_LIMIT_MIB = 13 * 1024;
 const buildLimitMiB = Number(process.env.EAGLER_BUILD_CAP_MIB || MAX_BUILD_LIMIT_MIB);
 const WASM_GC_RUNTIME_SHA256 = "1e80092312d7bfe6efa74f8bb372d5521bc0549dcfbf384f25a145261a80d124";
@@ -39,7 +40,7 @@ const rawArgs = process.argv.slice(2);
 const valueFlags = new Set(["--output", "--music-pack-output"]);
 const booleanFlags = new Set([
   "--skip-build", "--pack-only", "--reuse-client", "--reuse-mesh",
-  "--reuse-server", "--diagnostic", "--fast-package", "--with-music", "--help", "-h"
+  "--reuse-server", "--diagnostic", "--fast-package", "--with-audio", "--with-music", "--help", "-h"
 ]);
 for (let i = 0; i < rawArgs.length; ++i) {
   const arg = rawArgs[i];
@@ -60,7 +61,7 @@ Build precise hosted Wasm images and package a standalone Eaglercraft HTML.
   --reuse-server        Reuse a source-fresh precise server-worker.wasm
   --skip-build          Package the already assembled hosted build
   --output PATH         Set the standalone HTML output path
-  --with-music          Embed optional music instead of making a lean client
+  --with-audio          Package locally restored sound effects and music\n  --with-music          Embed music in the HTML (requires --with-audio)
   --music-pack-output P Set the optional music-pack output path
   --diagnostic          Produce a local-only named performance build
   --fast-package        Use faster lossless compression for larger test HTMLs
@@ -177,20 +178,48 @@ function prepareBaseAssets() {
   fs.copyFileSync(packed, hosted);
   console.log(`[single-html] Installed source-matched assets.epk (${fs.statSync(hosted).size.toLocaleString()} bytes)`);
 
-  // The checked-in source workspace does not contain the original OGG audio
-  // objects. Generate a valid empty EPK so the browser test client can boot
-  // without sounds; the actual audio pack can be restored in a later build.
-  run("./gradlew", [
-    ":target_lwjgl_desktop:buildSilentSoundsEPK",
-    "--console=plain",
-    "--no-daemon",
-    "--max-workers=1",
-    "-Dorg.gradle.parallel=false",
-    "-Dorg.gradle.jvmargs=-Xmx4096m -Xss4m -XX:MaxMetaspaceSize=768m -XX:+UseG1GC"
-  ]);
-  const silentSounds = path.join(repo, "target_teavm", "build", "web", "sounds.epk");
-  if (!fs.existsSync(silentSounds)) fail("silent sounds task did not produce sounds.epk");
-  console.log(`[single-html] Installed silent sounds.epk (${fs.statSync(silentSounds).size.toLocaleString()} bytes)`);
+  if (withAudio) {
+    const audioInputs = ["sounds", "music"].map(name =>
+      path.join(repo, ".eaglefine-audio", "epk-input", name));
+    for (const input of audioInputs) {
+      if (!fs.existsSync(input) || !fs.statSync(input).isDirectory) {
+        fail("local audio inputs are missing; run node wasm-toolchain/restore-game-audio.js first");
+      }
+    }
+    run("./gradlew", [
+      ":target_lwjgl_desktop:buildAudioEPKs",
+      "--console=plain",
+      "--no-daemon",
+      "--max-workers=1",
+      "-Dorg.gradle.parallel=false",
+      "-Dorg.gradle.jvmargs=-Xmx4096m -Xss4m -XX:MaxMetaspaceSize=768m -XX:+UseG1GC"
+    ]);
+    const soundsFile = path.join(repo, "target_teavm", "build", "web", "sounds.epk");
+    const musicFile = path.join(repo, "target_teavm", "build", "web", "music.epk");
+    if (!fs.existsSync(soundsFile) || fs.statSync(soundsFile).size === 0) {
+      fail("audio packaging did not produce a non-empty sounds.epk");
+    }
+    if (!fs.existsSync(musicFile) || fs.statSync(musicFile).size === 0) {
+      fail("audio packaging did not produce a non-empty music.epk");
+    }
+    console.log("[single-html] Installed locally restored sounds.epk and music.epk");
+  } else {
+    // The checked-in source workspace does not contain the original OGG audio
+    // objects. Generate a valid empty EPK so the browser test client can boot
+    // without sounds; the actual audio pack can be restored in a later build.
+    run("./gradlew", [
+      ":target_lwjgl_desktop:buildSilentSoundsEPK",
+      "--console=plain",
+      "--no-daemon",
+      "--max-workers=1",
+      "-Dorg.gradle.parallel=false",
+      "-Dorg.gradle.jvmargs=-Xmx4096m -Xss4m -XX:MaxMetaspaceSize=768m -XX:+UseG1GC"
+    ]);
+    const silentSounds = path.join(repo, "target_teavm", "build", "web", "sounds.epk");
+    if (!fs.existsSync(silentSounds)) fail("silent sounds task did not produce sounds.epk");
+    console.log(`[single-html] Installed silent sounds.epk (${fs.statSync(silentSounds).size.toLocaleString()} bytes)`);
+
+  }
 }
 
 function compressedWasm(name, bytes) {
@@ -721,7 +750,7 @@ console.log(`  music.epk:       ${(music ? music.length : 0).toLocaleString()} B
 console.log(`  output HTML:     ${outputBytes.toLocaleString()} B (${(outputBytes / 1_000_000).toFixed(2)} MB)`);
 console.log(`[single-html] wrote ${output}`);
 
-if (withoutMusic && fs.existsSync(musicSource)) {
+if (withoutMusic && withAudio && fs.existsSync(musicSource)) {
   const musicPack = spawnSync(process.execPath, [
     path.join(repo, "wasm-toolchain", "export-music-resource-pack.js"),
     musicSource,
@@ -729,8 +758,10 @@ if (withoutMusic && fs.existsSync(musicSource)) {
   ], { cwd: repo, stdio: "inherit" });
   if (musicPack.error) fail(musicPack.error.message);
   if (musicPack.status !== 0) fail(`optional music pack export exited with code ${musicPack.status}`);
+} else if (withoutMusic && withAudio) {
+  console.log("[single-html] Optional music pack unavailable; skipping export");
 } else if (withoutMusic) {
-  console.log("[single-html] Optional music pack unavailable; skipping export for this silent test build");
+  console.log("[single-html] Audio was not requested; keeping this test build silent");
 }
 
 if (withoutMusic && outputBytes > target && !diagnosticBuild && !fastPackage) {

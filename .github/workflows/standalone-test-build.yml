@@ -72,6 +72,9 @@ jobs:
       - name: Install pinned Node dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Validate local audio helper syntax
+        run: node --check wasm-toolchain/restore-game-audio.js
+
       - name: Build EagleFine standalone HTML
         env:
           EAGLER_BUILD_CAP_MIB: "13312"

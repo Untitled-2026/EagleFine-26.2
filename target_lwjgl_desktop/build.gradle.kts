@@ -78,6 +78,39 @@ tasks.register<JavaExec>("buildAssetsEPKWithWebUnreachable") {
 }
 
 
+// Local audio restoration tasks. OGG files stay under the ignored local directory.
+fun registerEagleFineAudioArchive(taskName: String, archiveName: String) {
+	val audioInput = rootProject.layout.projectDirectory.dir(".eaglefine-audio/epk-input/" + archiveName)
+	val audioOutput = rootProject.layout.projectDirectory.file("target_teavm/build/web/" + archiveName + ".epk")
+	tasks.register<JavaExec>(taskName) {
+		group = "eaglercraft"
+		description = "Package local " + archiveName + " OGG resources into an EPK"
+		dependsOn("classes")
+		inputs.dir(audioInput).withPathSensitivity(PathSensitivity.RELATIVE)
+		outputs.file(audioOutput)
+		classpath = sourceSets["main"].runtimeClasspath
+		mainClass = "net.lax1dude.eaglercraft.v1_8.sp.server.export.EPKPackagerMain"
+		doFirst {
+			val inputDir = audioInput.asFile
+			if (!inputDir.isDirectory || inputDir.walkTopDown().none { it.isFile }) {
+				throw GradleException("Missing local audio input: " + inputDir.absolutePath +
+					". Run node wasm-toolchain/restore-game-audio.js first.")
+			}
+			audioOutput.asFile.parentFile.mkdirs()
+		}
+		args(audioInput.asFile.absolutePath, audioOutput.asFile.absolutePath, archiveName)
+	}
+}
+
+registerEagleFineAudioArchive("buildSoundsEPK", "sounds")
+registerEagleFineAudioArchive("buildMusicEPK", "music")
+
+tasks.register("buildAudioEPKs") {
+	group = "eaglercraft"
+	description = "Build local sounds.epk and music.epk from restored audio inputs"
+	dependsOn("buildSoundsEPK", "buildMusicEPK")
+}
+
 // Development-only sounds archive for the first EagleFine browser test build.
 // It makes the client boot without audio when the original EPK audio inputs are
 // not available in this source workspace. Replace this with the real sounds EPK

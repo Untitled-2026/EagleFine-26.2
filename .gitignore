@@ -3,3 +3,6 @@ eaglefine-artifact-private.pem
 **/eaglefine-artifact-private.pem
 *artifact-private*.pem
 *.private.pem
+
+# Locally prepared official Minecraft audio (do not commit or redistribute)
+.eaglefine-audio/
