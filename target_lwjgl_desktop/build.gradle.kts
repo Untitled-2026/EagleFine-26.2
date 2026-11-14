@@ -110,13 +110,13 @@ tasks.register<JavaExec>("buildAssetsEPKWithWebUnreachable") {
 }
 
 
-// Local audio restoration tasks. OGG files stay under the ignored local directory.
+// Generated EagleFine audio inputs stay under the ignored build-work directory.
 fun registerEagleFineAudioArchive(taskName: String, archiveName: String) {
 	val audioInput = rootProject.layout.projectDirectory.dir(".eaglefine-audio/epk-input/" + archiveName)
 	val audioOutput = rootProject.layout.projectDirectory.file("target_teavm/build/web/" + archiveName + ".epk")
 	tasks.register<JavaExec>(taskName) {
 		group = "eaglercraft"
-		description = "Package local " + archiveName + " OGG resources into an EPK"
+		description = "Package generated EagleFine " + archiveName + " OGG resources into an EPK"
 		dependsOn("classes")
 		inputs.dir(audioInput).withPathSensitivity(PathSensitivity.RELATIVE)
 		outputs.file(audioOutput)
@@ -126,7 +126,7 @@ fun registerEagleFineAudioArchive(taskName: String, archiveName: String) {
 			val inputDir = audioInput.asFile
 			if (!inputDir.isDirectory || inputDir.walkTopDown().none { it.isFile }) {
 				throw GradleException("Missing local audio input: " + inputDir.absolutePath +
-					". Run node wasm-toolchain/restore-game-audio.js first.")
+					". Run node wasm-toolchain/generate-eaglefine-audio.js first.")
 			}
 			audioOutput.asFile.parentFile.mkdirs()
 		}
@@ -139,7 +139,7 @@ registerEagleFineAudioArchive("buildMusicEPK", "music")
 
 tasks.register("buildAudioEPKs") {
 	group = "eaglercraft"
-	description = "Build local sounds.epk and music.epk from restored audio inputs"
+	description = "Build sounds.epk and music.epk from generated EagleFine audio inputs"
 	dependsOn("buildSoundsEPK", "buildMusicEPK")
 }
 
