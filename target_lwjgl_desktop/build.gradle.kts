@@ -145,10 +145,8 @@ tasks.register("buildAudioEPKs") {
 	dependsOn("buildSoundsEPK", "buildMusicEPK")
 }
 
-// Development-only sounds archive for the first EagleFine browser test build.
-// It makes the client boot without audio when the original EPK audio inputs are
-// not available in this source workspace. Replace this with the real sounds EPK
-// before preparing a sound-enabled client.
+// Audio-disabled developer builds still need a valid empty archive to boot.
+// The normal standalone workflow generates or restores a full audio pack instead.
 tasks.register<JavaExec>("buildSilentSoundsEPK") {
 	group = "eaglercraft"
 	description = "Create a valid empty sounds.epk for a silent browser test build"
