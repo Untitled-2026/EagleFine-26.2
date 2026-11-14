@@ -7,7 +7,6 @@
 // No Minecraft installation, Mojang audio files, samples, or network downloads are used.
 
 const fs = require("node:fs");
-const crypto = require("node:crypto");
 const fsp = require("node:fs/promises");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
@@ -464,129 +463,6 @@ function createMusicSamples(track) {
   return samples;
 }
 
-function defaultMinecraftAssetsRoot() {
-  const home = process.env.USERPROFILE || process.env.HOME || "";
-  if (process.platform === "win32") {
-    const roaming = process.env.APPDATA || path.join(home, "AppData", "Roaming");
-    return path.join(roaming, ".minecraft", "assets");
-  }
-  if (process.platform === "darwin") {
-    return path.join(home, "Library", "Application Support", "minecraft", "assets");
-  }
-  return path.join(home, ".minecraft", "assets");
-}
-
-function collectAssetReferences(soundManifest) {
-  const refs = new Map();
-  for (const definition of Object.values(soundManifest)) {
-    for (const sound of (definition && Array.isArray(definition.sounds) ? definition.sounds : [])) {
-      const type = typeof sound === "string" ? "file" : (sound && sound.type) || "file";
-      const rawName = typeof sound === "string" ? sound : sound && sound.name;
-      if (type !== "file" || typeof rawName !== "string" || !rawName) continue;
-      const colon = rawName.indexOf(":");
-      const namespace = colon >= 0 ? rawName.slice(0, colon) : "minecraft";
-      const soundPath = colon >= 0 ? rawName.slice(colon + 1) : rawName;
-      const relative = namespace + "/sounds/" + soundPath + (soundPath.endsWith(".ogg") ? "" : ".ogg");
-      refs.set(relative, { namespace, soundPath, relative });
-    }
-  }
-  return [...refs.values()];
-}
-
-async function tryRestoreInstalledMinecraftAudio(soundManifest) {
-  const assetsRoot = path.resolve(
-    process.env.MINECRAFT_ASSETS_DIR || defaultMinecraftAssetsRoot()
-  );
-  const assetIndexId = process.env.MINECRAFT_ASSET_INDEX || "32";
-  const indexPath = path.join(assetsRoot, "indexes", assetIndexId + ".json");
-  if (!fs.existsSync(indexPath)) {
-    console.log("[eaglefine-audio] No Minecraft Java " + assetIndexId
-      + " asset index found at " + assetsRoot + "; using the embedded EagleFine audio pack.");
-    return false;
-  }
-
-  let index;
-  try {
-    index = JSON.parse(await fsp.readFile(indexPath, "utf8"));
-  } catch (error) {
-    console.log("[eaglefine-audio] Could not read the local Minecraft asset index; using embedded audio.");
-    return false;
-  }
-  if (!index.objects || typeof index.objects !== "object") {
-    console.log("[eaglefine-audio] Local Minecraft asset index is invalid; using embedded audio.");
-    return false;
-  }
-
-  const refs = collectAssetReferences(soundManifest);
-  if (refs.length < 1000) {
-    console.log("[eaglefine-audio] Sound manifest did not contain the expected audio references; using embedded audio.");
-    return false;
-  }
-
-  const resolved = [];
-  for (const ref of refs) {
-    const asset = index.objects[ref.relative];
-    if (!asset || !/^[0-9a-f]{40}$/i.test(asset.hash || "")
-        || !Number.isInteger(asset.size) || asset.size <= 0) {
-      console.log("[eaglefine-audio] Local asset index is missing " + ref.relative
-        + "; using embedded EagleFine audio instead.");
-      return false;
-    }
-    const source = path.join(assetsRoot, "objects", asset.hash.slice(0, 2), asset.hash);
-    try {
-      const stat = await fsp.stat(source);
-      if (!stat.isFile() || stat.size !== asset.size) {
-        console.log("[eaglefine-audio] A local Minecraft audio object is missing or incomplete; using embedded audio.");
-        return false;
-      }
-    } catch (error) {
-      console.log("[eaglefine-audio] A local Minecraft audio object is unavailable; using embedded audio.");
-      return false;
-    }
-    resolved.push({ ...ref, source, hash: asset.hash, size: asset.size });
-  }
-
-  await fsp.rm(OUTPUT, { recursive: true, force: true });
-  const effectsRoot = path.join(OUTPUT, "sounds", "assets");
-  const musicRoot = path.join(OUTPUT, "music", "assets");
-  const effectsManifestRoot = path.join(effectsRoot, "minecraft");
-  await fsp.mkdir(effectsManifestRoot, { recursive: true });
-
-  let completed = 0;
-  for (const item of resolved) {
-    let bytes;
-    try {
-      bytes = await fsp.readFile(item.source);
-    } catch (error) {
-      await fsp.rm(OUTPUT, { recursive: true, force: true });
-      console.log("[eaglefine-audio] A local Minecraft audio object could not be read; using embedded audio.");
-      return false;
-    }
-    if (bytes.length !== item.size
-        || crypto.createHash("sha1").update(bytes).digest("hex") !== item.hash) {
-      await fsp.rm(OUTPUT, { recursive: true, force: true });
-      console.log("[eaglefine-audio] A local Minecraft audio object failed integrity checks; using embedded audio.");
-      return false;
-    }
-    const isMusic = item.soundPath.startsWith("music/") || item.soundPath.startsWith("records/");
-    const targetRoot = isMusic ? musicRoot : effectsRoot;
-    const destination = path.join(targetRoot, item.namespace, "sounds", ...item.soundPath.split("/"))
-      + (item.soundPath.endsWith(".ogg") ? "" : ".ogg");
-    await fsp.mkdir(path.dirname(destination), { recursive: true });
-    await fsp.writeFile(destination, bytes);
-    completed++;
-    if (completed % 500 === 0 || completed === resolved.length) {
-      console.log("[eaglefine-audio] Verified local Minecraft audio " + completed + "/" + resolved.length + ".");
-    }
-  }
-
-  const manifestPath = path.join(effectsRoot, "minecraft", "sounds.json");
-  await fsp.writeFile(manifestPath, JSON.stringify(soundManifest), "utf8");
-  console.log("[eaglefine-audio] Using " + completed + " verified sound files from the local Minecraft Java "
-    + assetIndexId + " asset cache. These assets are kept in the ignored local build directory.");
-  return true;
-}
-
 async function main() {
   if (!fs.existsSync(MANIFEST)) {
     fail("Cannot find the built-in sounds.json at " + MANIFEST);
@@ -598,11 +474,8 @@ async function main() {
     fail("The built-in sound manifest looks incomplete; found only " + eventNames.length + " events.");
   }
 
-  // Prefer a complete, hash-verified Minecraft Java asset cache when the local
-  // build machine has one. GitHub Actions and machines without it use the
-  // original procedural audio generated below.
-  if (await tryRestoreInstalledMinecraftAudio(original)) return;
-
+  // The standalone HTML always embeds original EagleFine fallback audio.
+  // Players may optionally select their own Minecraft Java asset cache at runtime.
   verifyFfmpeg();
   await fsp.rm(OUTPUT, { recursive: true, force: true });
   await fsp.rm(WORK, { recursive: true, force: true });
