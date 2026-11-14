@@ -26,19 +26,28 @@ Install build tools in the patcher to set up Java and Node locally. The patcher
 uses Java 17 for extraction and Java 25 for compilation. Keep the supplied input
 files together; their hashes identify the supported version.
 
-For an audio-enabled EagleFine build, install FFmpeg with both the
-`libvorbis` and `libopus` encoders. From the EagleFine project root, run:
+For an audio-enabled EagleFine build, run this from the project root:
 
 ```sh
 node wasm-toolchain/build-single-html.js --with-audio --with-music --output EagleFine-26.2-audio.html
 ```
 
-The build generates original sound effects and music in code, encodes effects
-as OGG Vorbis and music as OGG Opus, and packages them into the game. It does
-not read your Minecraft installation, download sound files, or require players
-to import a resource pack. The resulting standalone HTML contains the sounds
-and music. The project’s GitHub Actions workflow performs the same generation
-and packaging automatically.
+The audio generator first checks for the Minecraft Java 26.2 asset cache:
+`%APPDATA%\\.minecraft\\assets` on Windows, `~/Library/Application
+Support/minecraft/assets` on macOS, or `~/.minecraft/assets` on Linux. It
+checks asset index `32` and verifies the referenced audio files. For a
+non-standard install, set `MINECRAFT_ASSETS_DIR` to the assets folder; set
+`MINECRAFT_ASSET_INDEX` to override the index ID.
+
+When a complete local cache is found, its audio is used in the locally built
+HTML. If it is missing or incomplete, EagleFine generates original replacement
+effects and music instead. That fallback requires FFmpeg with both the
+`libvorbis` and `libopus` encoders. The HTML always embeds the selected audio;
+players do not need a separate resource pack or audio files.
+
+GitHub Actions has no Minecraft installation, so its build uses the original
+EagleFine fallback audio. A local build that embeds Minecraft's game audio is
+for personal use; do not redistribute that HTML or its bundled audio.
 
 Allow about 30 minutes on a reasonably capable PC. One completed local build
 took 41 minutes 46 seconds. Downloads and slower hardware can add time.
