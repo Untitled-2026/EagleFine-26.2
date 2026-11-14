@@ -100,20 +100,27 @@ is inactive and include fallbacks for unsupported browser/GPU features.
 
 ## Audio generation and packaging
 
-`wasm-toolchain/generate-eaglefine-audio.js` synthesizes an original set of
-short effects and ambient music from deterministic procedural waveforms. It
-uses the game's sound-event names and subtitle metadata as a routing reference,
-then writes a replacement `sounds.json` alongside the generated audio. The
-generator does not read or download Minecraft audio assets.
+`wasm-toolchain/generate-eaglefine-audio.js` first checks for the Minecraft
+Java 26.2 asset cache (asset index `32` by default). It uses the local audio only
+when every file referenced by the game's sound manifest exists and passes
+SHA-1/size verification. The default cache paths follow the platform's normal
+Minecraft Java installation location; `MINECRAFT_ASSETS_DIR` and
+`MINECRAFT_ASSET_INDEX` can override them.
+
+If no complete local cache is found, the generator synthesizes an original set
+of short effects and ambient music from deterministic procedural waveforms.
+It uses the game's sound-event names and subtitle metadata as a routing
+reference, then writes a replacement `sounds.json` alongside those generated
+assets. No audio is downloaded.
 
 Short effects are encoded as OGG Vorbis for the browser's JOrbis decoder.
-Music is encoded as OGG Opus for the browser's native `decodeAudioData` path.
-The Gradle `buildAudioEPKs` task creates `sounds.epk` and `music.epk`, while
-`buildEagleFineAssetsEPK` keeps the original sound manifest and absent audio
-files out of the base asset archive. The standalone HTML builder embeds both
+Fallback music is encoded as OGG Opus for the browser's native
+`decodeAudioData` path. The Gradle `buildAudioEPKs` task creates
+`sounds.epk` and `music.epk`, while `buildEagleFineAssetsEPK` keeps the base
+asset archive separate from audio. The standalone HTML builder embeds both
 audio archives when invoked with `--with-audio --with-music`.
 
-GitHub Actions installs FFmpeg, runs the generator, and produces a self-contained
-audio-enabled HTML artifact. Players need no local Minecraft installation,
-separate sound files, or imported resource pack. This is an original first-pass
-sound design, not a copy of Minecraft's sound recordings or music.
+GitHub Actions has no Minecraft installation and therefore uses the original
+EagleFine fallback pack. Local builds that embed Minecraft's installed audio
+are personal-use outputs and should not be redistributed. Players always
+receive a self-contained HTML and do not need a separate resource pack.
