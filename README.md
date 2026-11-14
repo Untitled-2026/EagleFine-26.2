@@ -26,9 +26,9 @@ The first standalone EagleFine HTML test client has been built and opened in a b
 
 ### Audio
 
-- **Audio source selection:** when building locally, EagleFine checks for the Minecraft Java 26.2 asset cache (by default, `%APPDATA%/.minecraft/assets` on Windows or `~/.minecraft/assets` on Linux). It uses those verified local sounds when the complete asset index is present. You can override the assets directory with `MINECRAFT_ASSETS_DIR` and the index ID with `MINECRAFT_ASSET_INDEX` (default `32`).
-- If the Minecraft Java audio cache is missing or incomplete, the build automatically generates 82 original sound-effect variations across 41 families and 12 original music tracks. The selected audio is packaged into `sounds.epk` and `music.epk` and embedded in the standalone HTML, so players do not need separate files or a resource pack.
-- GitHub Actions does not have a Minecraft installation, so its build uses the embedded original EagleFine sounds. Local HTML files built using a Minecraft audio cache contain those game assets; keep those personal builds private and do not redistribute them. FFmpeg with both `libvorbis` and `libopus` encoders is required only when the generated fallback is needed.
+- **Runtime audio selection:** when a player opens an audio-enabled standalone HTML, EagleFine shows an audio setup screen. The player can select their Minecraft Java `.minecraft` folder or its `assets` folder. EagleFine reads the matching asset index and referenced audio files locally, then creates temporary sound archives in the browser. It does not modify the installation or upload the selected audio.
+- The HTML always includes original EagleFine fallback audio: 82 sound-effect variations across 41 families and 12 original music tracks. Skipping or cancelling folder selection, denying access, using an unsupported browser, or selecting an incomplete cache keeps the embedded audio active. Players do not need a separate resource pack or audio files.
+- The build uses only the original generated audio, so no Minecraft installation is needed to build or share the HTML. FFmpeg with both `libvorbis` and `libopus` encoders is required for the fallback audio generation.
 
 ### Known limitations
 
