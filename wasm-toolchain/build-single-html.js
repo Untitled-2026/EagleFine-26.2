@@ -184,7 +184,7 @@ function prepareBaseAssets() {
     const audioInputs = ["sounds", "music"].map(name =>
       path.join(repo, ".eaglefine-audio", "epk-input", name));
     for (const input of audioInputs) {
-      if (!fs.existsSync(input) || !fs.statSync(input).isDirectory) {
+      if (!fs.existsSync(input) || !fs.statSync(input).isDirectory()) {
         fail("generated EagleFine audio inputs are missing; check that generate-eaglefine-audio.js completed successfully");
       }
     }
