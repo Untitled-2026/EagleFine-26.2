@@ -78,8 +78,11 @@ jobs:
           sudo apt-get install -y ffmpeg
           ffmpeg -hide_banner -encoders | grep -E 'libvorbis|libopus'
 
-      - name: Validate generated audio helper syntax
-        run: node --check wasm-toolchain/generate-eaglefine-audio.js
+      - name: Validate audio helper syntax
+        run: |
+          node --check wasm-toolchain/generate-eaglefine-audio.js
+          node --check wasm-toolchain/standalone-audio-selector.js
+          node --check wasm-toolchain/build-single-html.js
 
       - name: Build EagleFine standalone HTML
         env:
