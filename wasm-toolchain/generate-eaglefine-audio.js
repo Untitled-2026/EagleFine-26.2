@@ -552,18 +552,22 @@ async function tryRestoreInstalledMinecraftAudio(soundManifest) {
   const effectsManifestRoot = path.join(effectsRoot, "minecraft");
   await fsp.mkdir(effectsManifestRoot, { recursive: true });
 
-  const verified = new Set();
   let completed = 0;
   for (const item of resolved) {
-    const bytes = await fsp.readFile(item.source);
+    let bytes;
+    try {
+      bytes = await fsp.readFile(item.source);
+    } catch (error) {
+      await fsp.rm(OUTPUT, { recursive: true, force: true });
+      console.log("[eaglefine-audio] A local Minecraft audio object could not be read; using embedded audio.");
+      return false;
+    }
     if (bytes.length !== item.size
         || crypto.createHash("sha1").update(bytes).digest("hex") !== item.hash) {
       await fsp.rm(OUTPUT, { recursive: true, force: true });
       console.log("[eaglefine-audio] A local Minecraft audio object failed integrity checks; using embedded audio.");
       return false;
     }
-    verified.add(item.hash);
-
     const isMusic = item.soundPath.startsWith("music/") || item.soundPath.startsWith("records/");
     const targetRoot = isMusic ? musicRoot : effectsRoot;
     const destination = path.join(targetRoot, item.namespace, "sounds", ...item.soundPath.split("/"))
