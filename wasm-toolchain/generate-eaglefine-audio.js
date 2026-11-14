@@ -398,16 +398,16 @@ function createMusicSamples(track) {
     }
   }
 
+  // Render the backing pad and bass in one linear pass.
+  const underwater = track.theme === "underwater";
+  const ethereal = track.theme === "ethereal";
+  const brightness = track.theme === "bright" || track.theme === "record" ? 1.0 : 0.72;
+  const barFrames = Math.max(1, Math.floor(barDuration * rate));
   for (let i = 0; i < frames; i++) {
     const t = i / rate;
-    const bar = Math.floor(t / barDuration);
-    const local = t - bar * barDuration;
+    const bar = Math.floor(i / barFrames);
+    const local = (i - bar * barFrames) / rate;
     const chord = progression[bar % progression.length];
-    const fadeIn = Math.min(1, t / 2.0);
-    const fadeOut = Math.min(1, (track.duration - t) / 2.2);
-    const underwater = track.theme === "underwater";
-    const ethereal = track.theme === "ethereal";
-    const brightness = track.theme === "bright" || track.theme === "record" ? 1.0 : 0.72;
     let pad = 0;
     for (let n = 0; n < chord.length; n++) {
       const f = midiFrequency(chord[n] - (underwater ? 12 : 0));
@@ -416,30 +416,44 @@ function createMusicSamples(track) {
       pad += Math.sin(2 * Math.PI * f * 2.01 * t + n) * 0.0035;
     }
     const padEnvelope = 0.72 + 0.28 * Math.sin(Math.PI * local / barDuration);
-    let melodyLeft = 0;
-    let melodyRight = 0;
-    for (let m = 0; m < melody.length; m++) {
-      const note = melody[m];
-      const age = t - note.start;
-      if (age >= 0 && age <= note.length) {
-        const env = Math.exp(-age * (track.theme === "record" ? 2.9 : 2.2));
-        const f = midiFrequency(note.note);
-        const wave = Math.sin(2 * Math.PI * f * age)
-          + 0.28 * Math.sin(2 * Math.PI * f * 2.0 * age)
-          + 0.09 * Math.sin(2 * Math.PI * f * 3.01 * age);
-        const amp = wave * env * (ethereal ? 0.105 : 0.082) * brightness;
-        melodyLeft += amp * (1 - note.pan * 0.34);
-        melodyRight += amp * (1 + note.pan * 0.34);
-      }
-    }
     const bassFreq = midiFrequency(chord[0] - (underwater ? 12 : 0));
     const bass = Math.sin(2 * Math.PI * bassFreq * t) * 0.025;
     const shimmer = Math.sin(2 * Math.PI * midiFrequency(chord[2] + 24) * t + Math.sin(t * 0.22)) * (ethereal ? 0.012 : 0.004);
     const pulse = track.theme === "record" ? Math.sin(2 * Math.PI * 1.4 * t) * 0.009 : 0;
-    const left = (pad * padEnvelope + bass + shimmer + melodyLeft + pulse) * fadeIn * fadeOut;
-    const right = (pad * padEnvelope + bass + shimmer * 0.82 + melodyRight + pulse) * fadeIn * fadeOut;
-    samples[i * 2] = left;
-    samples[i * 2 + 1] = right;
+    const base = pad * padEnvelope + bass + pulse;
+    samples[i * 2] = base + shimmer;
+    samples[i * 2 + 1] = base + shimmer * 0.82;
+  }
+
+  // Draw each melody note only across its own duration. This avoids scanning
+  // every note for every sample and keeps generation close to linear time.
+  for (const note of melody) {
+    const first = Math.max(0, Math.floor(note.start * rate));
+    const last = Math.min(frames, Math.ceil((note.start + note.length) * rate));
+    const f = midiFrequency(note.note);
+    const leftGain = 1 - note.pan * 0.34;
+    const rightGain = 1 + note.pan * 0.34;
+    const amplitude = (ethereal ? 0.105 : 0.082) * brightness;
+    const decay = track.theme === "record" ? 2.9 : 2.2;
+    for (let i = first; i < last; i++) {
+      const age = i / rate - note.start;
+      const env = Math.exp(-age * decay);
+      const phase = 2 * Math.PI * f * age;
+      const wave = Math.sin(phase)
+        + 0.28 * Math.sin(phase * 2.0)
+        + 0.09 * Math.sin(phase * 3.01);
+      const amp = wave * env * amplitude;
+      samples[i * 2] += amp * leftGain;
+      samples[i * 2 + 1] += amp * rightGain;
+    }
+  }
+
+  // Apply matching fade envelopes to the combined track.
+  for (let i = 0; i < frames; i++) {
+    const t = i / rate;
+    const fade = Math.min(1, t / 2.0) * Math.min(1, (track.duration - t) / 2.2);
+    samples[i * 2] *= fade;
+    samples[i * 2 + 1] *= fade;
   }
 
   let peak = 0;
