@@ -396,6 +396,16 @@ const decoderJs = browserDecoderSource(
 );
 const decoderWasm = fs.readFileSync(path.join(decoderRoot, "brotli_dec_wasm_bg.wasm"));
 
+const audioSelectorSource = withAudio
+  ? fs.readFileSync(path.join(repo, "wasm-toolchain", "standalone-audio-selector.js"), "utf8")
+      .replace(
+        "/*__EAGLER_AUDIO_MANIFEST__*/",
+        "window.__eagStandaloneSoundManifest = " + JSON.stringify(JSON.parse(
+          fs.readFileSync(path.join(repo, "game", "src", "main", "resources", "assets", "minecraft", "sounds.json"), "utf8")
+        )) + ";"
+      ).replace(/<\\/script/gi, "<\\\\/script")
+  : "";
+
 // Hosted preloads save startup latency, but a standalone file must not ask the
 // browser to fetch sibling payloads before the inline fetch shim is installed.
 // Besides producing noisy file:// origin errors, those speculative requests can
@@ -452,6 +462,7 @@ ${payloads.join("\n")}
 <script type="text/javascript">
 ${decoderJs}
 </script>
+${withAudio ? '<script type="text/javascript">\\n' + audioSelectorSource + '\\n</script>' : ""}
 <script type="text/javascript">
 (function () {
   "use strict";
@@ -550,14 +561,48 @@ ${decoderJs}
   window.__eagBrotli.initSync({ module: decoderBytes });
   decoderBytes = null;
 
-  window.__eagPrepareInlineAssets = function () {
+  window.__eagPrepareInlineAssets = async function () {
+    var selection = window.__eagAudioSelectionReady
+      ? await window.__eagAudioSelectionReady
+      : { source: "embedded" };
     var entries = window.eaglercraftXOpts && window.eaglercraftXOpts.assetsURI;
     if (!Array.isArray(entries)) return;
+    var hasSounds = false;
+    var hasMusic = false;
     for (var i = 0; i < entries.length; ++i) {
       var name = String(entries[i].url || "").split("/").pop().split(/[?#]/)[0];
-      var id = payloadIds[name];
-      if (!id) continue;
+      if (name === "sounds.epk") {
+        hasSounds = true;
+        if (selection.source === "minecraft" && selection.soundsUrl) {
+          entries[i].url = selection.soundsUrl;
+          continue;
+        }
+      }
+      if (name === "music.epk") {
+        hasMusic = true;
+        if (selection.source === "minecraft" && selection.musicUrl) {
+          entries[i].url = selection.musicUrl;
+          continue;
+        }
+      }
+      if (!payloadIds[name]) {
+        if (name === "music.epk") {
+          entries.splice(i--, 1);
+          hasMusic = false;
+        }
+        continue;
+      }
       entries[i].url = inlinePayloadPrefix + name;
+    }
+    if (selection.source === "minecraft") {
+      if (!hasSounds && selection.soundsUrl) {
+        entries.push({ url: selection.soundsUrl, path: "" });
+      }
+      if (!hasMusic && selection.musicUrl) {
+        entries.push({ url: selection.musicUrl, path: "" });
+      }
+    } else if (${withMusic} && !hasMusic) {
+      entries.push({ url: inlinePayloadPrefix + "music.epk", path: "" });
     }
   };
 
@@ -710,9 +755,15 @@ ${decoderJs}
 </script>`;
 
 html = html.replace("<head>", `<head>\n${prelude}`);
+if (withAudio) {
+  const audioGateMarkup = "<style id=\"eag-audio-gate-style\">\n  #eag-audio-gate{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;box-sizing:border-box;padding:24px;background:radial-gradient(ellipse at 50% 35%,#283b36 0%,#101916 52%,#050807 100%);color:#f4f7f4;font-family:system-ui,-apple-system,\"Segoe UI\",sans-serif}\n  #eag-audio-gate *{box-sizing:border-box}\n  #eag-audio-card{width:min(100%,520px);padding:32px;border:1px solid rgba(183,220,192,.28);border-radius:18px;background:rgba(10,16,14,.94);box-shadow:0 22px 80px rgba(0,0,0,.55);text-align:center}\n  #eag-audio-brand{margin:0 0 10px;color:#9fd6a7;font-size:12px;font-weight:800;letter-spacing:.22em}\n  #eag-audio-card h1{margin:0 0 14px;font-size:clamp(25px,5vw,34px);font-weight:750}\n  #eag-audio-card p{margin:0 0 12px;color:#c3cec6;font-size:14px;line-height:1.55}\n  #eag-audio-actions{display:grid;gap:10px;margin:24px 0 14px}\n  #eag-audio-gate button{width:100%;min-height:48px;border:0;border-radius:9px;padding:12px 18px;font:700 14px system-ui,sans-serif;cursor:pointer}\n  #eag-audio-choose{background:#8acb92;color:#102016}\n  #eag-audio-fallback{border:1px solid #60776a!important;background:#1b2821;color:#edf5ef}\n  #eag-audio-gate button:disabled{opacity:.55;cursor:wait}\n  #eag-audio-status{min-height:22px;margin-top:14px;color:#a6c9ad;font-size:12px;line-height:1.5}\n  #eag-audio-privacy{margin-top:12px!important;color:#829187!important;font-size:11px!important}\n  @media(max-width:480px){#eag-audio-card{padding:25px 19px}}\n</style>\n<div id=\"eag-audio-gate\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"eag-audio-title\">\n  <section id=\"eag-audio-card\">\n    <div id=\"eag-audio-brand\">EAGLEFINE 26.2</div>\n    <h1 id=\"eag-audio-title\">Audio Setup</h1>\n    <p>Choose your Minecraft Java Edition installation to use its original sounds and music.</p>\n    <p>Select your <strong>.minecraft</strong> folder or its <strong>assets</strong> folder. You can also skip this and use the audio already included in this HTML file.</p>\n    <div id=\"eag-audio-actions\">\n      <button id=\"eag-audio-choose\" type=\"button\" onclick=\"window.__eagChooseMinecraftAudio()\">Select Minecraft Folder</button>\n      <button id=\"eag-audio-fallback\" type=\"button\" onclick=\"window.__eagUseEmbeddedAudio()\">Use Embedded Audio</button>\n    </div>\n    <div id=\"eag-audio-status\" role=\"status\" aria-live=\"polite\">Your choice is optional. EagleFine will start after you choose.</div>\n    <p id=\"eag-audio-privacy\">Read-only access. Selected audio stays on this device and is not uploaded.</p>\n  </section>\n</div>";
+  const bodyOpening = /<body\\b[^>]*>/i;
+  if (!bodyOpening.test(html)) fail("could not locate the HTML body for the audio setup screen");
+  html = html.replace(bodyOpening, match => match + "\\n" + audioGateMarkup);
+}
 html = html.replace(
   "\t\t(async () => {\n\t\t\ttry {",
-  "\t\t(async () => {\n\t\t\ttry {\n\t\t\t\twindow.__eagPrepareInlineAssets();"
+  "\t\t(async () => {\n\t\t\ttry {\n\t\t\t\tawait window.__eagPrepareInlineAssets();"
 );
 html = html.replace(
   /new URL\("classes\.wasm-runtime\.js(?:\?v=[^"]+)?", location\.href\)\.href/g,
