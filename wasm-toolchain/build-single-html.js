@@ -13,9 +13,8 @@ const {
 
 const repo = path.resolve(__dirname, "..");
 const webDir = path.join(repo, "target_teavm_wasm_gc", "build", "web");
-// deploy_wasm_web.sh intentionally removes music.epk from the Wasm-GC output.
-// Music remains produced by the regular TeaVM asset build and is shared with
-// both the inline compatibility client and the optional resource-pack ZIP.
+// Music is embedded into the standalone HTML when --with-music is selected.
+// The generated effects and music are original EagleFine assets, not Mojang files.
 const musicSource = path.join(repo, "target_teavm", "build", "web", "music.epk");
 const args = new Set(process.argv.slice(2));
 const skipBuild = args.has("--skip-build") || args.has("--pack-only");
@@ -24,10 +23,8 @@ const reuseMesh = args.has("--reuse-mesh");
 const reuseServer = args.has("--reuse-server");
 const diagnosticBuild = args.has("--diagnostic");
 const fastPackage = args.has("--fast-package");
-// Match the lean Eagler 1.8 distribution: gameplay/UI/animal effects remain in
-// sounds.epk, while background music and records ship as an optional imported
-// resource pack. --with-music remains available for a deliberately monolithic
-// compatibility build.
+// Keep background music optional for local callers, while the standard EagleFine
+// Actions workflow opts into a fully self-contained audio-enabled HTML.
 const withoutMusic = !args.has("--with-music");
 const withMusic = !withoutMusic;
 const withAudio = args.has("--with-audio") || withMusic;
@@ -61,7 +58,8 @@ Build precise hosted Wasm images and package a standalone Eaglercraft HTML.
   --reuse-server        Reuse a source-fresh precise server-worker.wasm
   --skip-build          Package the already assembled hosted build
   --output PATH         Set the standalone HTML output path
-  --with-audio          Package locally restored sound effects and music\n  --with-music          Embed music in the HTML (requires --with-audio)
+  --with-audio          Generate and package original EagleFine sound effects and music (requires FFmpeg)
+  --with-music          Embed the generated music in the standalone HTML
   --music-pack-output P Set the optional music-pack output path
   --diagnostic          Produce a local-only named performance build
   --fast-package        Use faster lossless compression for larger test HTMLs
@@ -163,17 +161,21 @@ function verifyReusableArtifact(file, flag, target, label) {
 }
 
 function prepareBaseAssets() {
+  if (withAudio) {
+    run(process.execPath, ["wasm-toolchain/generate-eaglefine-audio.js"]);
+  }
+
   run("./gradlew", [
-    ":target_lwjgl_desktop:buildAssetsEPK",
+    ":target_lwjgl_desktop:buildEagleFineAssetsEPK",
     "--console=plain",
     "--no-daemon",
     "--max-workers=1",
     "-Dorg.gradle.parallel=false",
     "-Dorg.gradle.jvmargs=-Xmx4096m -Xss4m -XX:MaxMetaspaceSize=768m -XX:+UseG1GC"
   ]);
-  const packed = path.join(repo, "target_lwjgl_desktop", "build", "epk", "assets.epk");
+  const packed = path.join(repo, "target_lwjgl_desktop", "build", "epk", "eaglefine-assets.epk");
   const hosted = path.join(repo, "target_teavm", "build", "web", "assets.epk");
-  if (!fs.existsSync(packed)) fail("buildAssetsEPK completed without producing assets.epk");
+  if (!fs.existsSync(packed)) fail("buildEagleFineAssetsEPK completed without producing eaglefine-assets.epk");
   fs.mkdirSync(path.dirname(hosted), { recursive: true });
   fs.copyFileSync(packed, hosted);
   console.log(`[single-html] Installed source-matched assets.epk (${fs.statSync(hosted).size.toLocaleString()} bytes)`);
@@ -183,7 +185,7 @@ function prepareBaseAssets() {
       path.join(repo, ".eaglefine-audio", "epk-input", name));
     for (const input of audioInputs) {
       if (!fs.existsSync(input) || !fs.statSync(input).isDirectory) {
-        fail("local audio inputs are missing; run node wasm-toolchain/restore-game-audio.js first");
+        fail("generated EagleFine audio inputs are missing; check that generate-eaglefine-audio.js completed successfully");
       }
     }
     run("./gradlew", [
@@ -202,11 +204,9 @@ function prepareBaseAssets() {
     if (!fs.existsSync(musicFile) || fs.statSync(musicFile).size === 0) {
       fail("audio packaging did not produce a non-empty music.epk");
     }
-    console.log("[single-html] Installed locally restored sounds.epk and music.epk");
+    console.log("[single-html] Installed generated EagleFine sounds.epk and music.epk");
   } else {
-    // The checked-in source workspace does not contain the original OGG audio
-    // objects. Generate a valid empty EPK so the browser test client can boot
-    // without sounds; the actual audio pack can be restored in a later build.
+    // Audio-disabled developer builds still need a valid empty archive to boot.
     run("./gradlew", [
       ":target_lwjgl_desktop:buildSilentSoundsEPK",
       "--console=plain",
