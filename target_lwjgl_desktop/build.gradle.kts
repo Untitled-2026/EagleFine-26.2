@@ -130,7 +130,9 @@ fun registerEagleFineAudioArchive(taskName: String, archiveName: String) {
 			}
 			audioOutput.asFile.parentFile.mkdirs()
 		}
-		args(audioInput.asFile.absolutePath, audioOutput.asFile.absolutePath, archiveName)
+		// Audio archives intentionally contain only sound resources, not the six
+		// unrelated GUI files required by the full assets.epk audit.
+		args(audioInput.asFile.absolutePath, audioOutput.asFile.absolutePath, archiveName, "--allow-empty")
 	}
 }
 
