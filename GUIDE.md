@@ -33,7 +33,7 @@ node wasm-toolchain/build-single-html.js --with-audio --with-music --output Eagl
 ```
 
 The audio generator first checks for the Minecraft Java 26.2 asset cache:
-`%APPDATA%\\.minecraft\\assets` on Windows, `~/Library/Application
+`%APPDATA%/.minecraft/assets` on Windows, `~/Library/Application
 Support/minecraft/assets` on macOS, or `~/.minecraft/assets` on Linux. It
 checks asset index `32` and verifies the referenced audio files. For a
 non-standard install, set `MINECRAFT_ASSETS_DIR` to the assets folder; set
