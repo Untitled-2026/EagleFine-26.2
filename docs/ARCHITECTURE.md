@@ -98,29 +98,34 @@ Prefer EagleFine-owned classes and narrow, documented Minecraft integration
 points. Renderer modifications must preserve the original path when a feature
 is inactive and include fallbacks for unsupported browser/GPU features.
 
-## Audio generation and packaging
+## Audio generation, selection and packaging
 
-`wasm-toolchain/generate-eaglefine-audio.js` first checks for the Minecraft
-Java 26.2 asset cache (asset index `32` by default). It uses the local audio only
-when every file referenced by the game's sound manifest exists and passes
-SHA-1/size verification. The default cache paths follow the platform's normal
-Minecraft Java installation location; `MINECRAFT_ASSETS_DIR` and
-`MINECRAFT_ASSET_INDEX` can override them.
+`wasm-toolchain/generate-eaglefine-audio.js` always creates an original
+fallback audio set from deterministic procedural waveforms. It uses the
+game's sound-event names and subtitle metadata as a routing reference, then
+writes a replacement `sounds.json` alongside the generated assets. No
+Minecraft installation, game audio files or network downloads are used during
+the build.
 
-If no complete local cache is found, the generator synthesizes an original set
-of short effects and ambient music from deterministic procedural waveforms.
-It uses the game's sound-event names and subtitle metadata as a routing
-reference, then writes a replacement `sounds.json` alongside those generated
-assets. No audio is downloaded.
-
-Short effects are encoded as OGG Vorbis for the browser's JOrbis decoder.
-Fallback music is encoded as OGG Opus for the browser's native
+Short fallback effects are encoded as OGG Vorbis for the browser's JOrbis
+decoder. Fallback music is encoded as OGG Opus for the browser's native
 `decodeAudioData` path. The Gradle `buildAudioEPKs` task creates
-`sounds.epk` and `music.epk`, while `buildEagleFineAssetsEPK` keeps the base
-asset archive separate from audio. The standalone HTML builder embeds both
-audio archives when invoked with `--with-audio --with-music`.
+`sounds.epk` and `music.epk`, while `buildEagleFineAssetsEPK` keeps the
+base asset archive separate. The standalone HTML embeds both audio archives
+when invoked with `--with-audio --with-music`.
 
-GitHub Actions has no Minecraft installation and therefore uses the original
-EagleFine fallback pack. Local builds that embed Minecraft's installed audio
-are personal-use outputs and should not be redistributed. Players always
-receive a self-contained HTML and do not need a separate resource pack.
+At runtime, the standalone HTML shows an audio-selection screen before client
+startup. In browsers that support the File System Access directory picker, the
+player can explicitly grant read access to the Minecraft Java `.minecraft`
+folder or its `assets` folder. The selector checks available asset indexes,
+resolves the sound references to local content-addressed objects, and builds
+temporary EPK v2 resource archives as browser `Blob` URLs. Effects and the
+sound manifest go into `sounds.epk`; music and record files go into
+`music.epk`. The existing resource loader consumes those archives without
+changing the installed game files or uploading their contents.
+
+If the player skips or cancels selection, access is denied, the browser does
+not support the directory picker, or a complete matching asset cache cannot
+be read, the loader uses the original audio archives embedded in the HTML.
+The runtime selector and fallback are included only in audio-enabled
+standalone builds.
