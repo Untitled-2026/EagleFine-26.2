@@ -24,9 +24,15 @@ The first standalone EagleFine HTML test client has been built and opened in a b
 - A standalone HTML build completed successfully, and the generated client was opened in a browser.
 - The credits and Dynamic Lights changes need a fresh build and in-client testing.
 
+### Audio
+
+- **Original EagleFine audio:** the build generates its own block, footstep, interface, item, creature, water, fire and ambient effects, plus a small original ambient soundtrack. The generator creates 82 effect variants across 41 sound families and 12 music tracks, then maps them to the sound events used by the game.
+- Audio is generated during the build and packaged into `sounds.epk` and `music.epk`, with music embedded in the standard standalone HTML. Players do not need local audio files, a Minecraft installation, or a separate resource pack.
+- The sounds are original procedural replacements designed for a familiar block-building game atmosphere; they are not recordings from Minecraft and do not reproduce its soundtrack. FFmpeg with both `libvorbis` and `libopus` encoders is required.
+
 ### Known limitations
 
-- **Audio can be restored locally:** `wasm-toolchain/restore-game-audio.js` verifies audio files from a local Minecraft Java 26.2 asset cache, keeps effects as Vorbis OGG, and transcodes music/records to Opus-in-Ogg. FFmpeg 6.1.1 or newer with libopus support is required. The helper reads the audio files from your local launcher cache and does not download, commit, or add them to public GitHub Actions builds.
+- The generated sounds are a first-pass audio set. They cover the existing sound-event IDs with material- and event-aware sound families, but are not a one-to-one recreation of every original game recording.
 - Dynamic Lights supports item/display sources, glowing and burning entities, primed TNT and lightning; not every visual particle or shader effect is treated as block light.
 - Dynamic Lights has no artificial source-count or visited-cell cap. Large numbers of nearby sources can increase frame time and memory use, so performance testing is required.
 - Browser/WebGL capabilities may limit some advanced OptiFine-style features.
@@ -36,8 +42,8 @@ The first standalone EagleFine HTML test client has been built and opened in a b
 1. Compare frame rate and memory with Dynamic Lights off and on in the same cave or crowded scene.
 2. Test held, dropped and displayed light items, glowing/burning entities, primed TNT, lightning, and opaque-block occlusion.
 3. Check the Dynamic Lights counters (`getLastFieldSourceCount`, `getLastFieldCellCount`, and `getLastFieldBuildNanos`) while moving through a light-heavy area.
-4. Restore audio from a local Minecraft Java 26.2 asset cache with `node wasm-toolchain/restore-game-audio.js`, then build using `--with-audio --with-music`.
-5. Keep audio-enabled builds private/local; continue with Connected Textures, Custom Sky, fog controls and shader experiments.
+4. Test the generated sound effects and soundtrack in the browser, checking block interactions, footsteps, creatures, ambience, music changes and music discs.
+5. Improve the sound families and soundtrack after listening tests; continue with Connected Textures, Custom Sky, fog controls and shader experiments.
 
 ## Development
 
@@ -49,7 +55,7 @@ The project uses the upstream Eaglercraft 26.2 Gradle workspace. The documented 
 
 On Windows, use `gradlew.bat` instead of `./gradlew`.
 
-The standalone HTML build is more memory-intensive than the Java compile check. GitHub Actions builds a silent test client on a GitHub-hosted Ubuntu runner. The audio-enabled build is a separate local-only option using your own official game assets.
+The standalone HTML build is more memory-intensive than the Java compile check. GitHub Actions installs FFmpeg, generates the original EagleFine audio, and builds a self-contained audio-enabled test client. No Minecraft audio cache or player-supplied audio files are used.
 
 ## Project principles
 
