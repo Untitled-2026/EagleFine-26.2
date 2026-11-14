@@ -100,7 +100,7 @@
     for await (var pair of indexesFolder.entries()) {
       var name = pair[0];
       var handle = pair[1];
-      if (handle.kind === "file" && /^\d+\.json$/i.test(name)) {
+      if (handle.kind === "file" && /^\\d+\\.json$/i.test(name)) {
         candidates.push({ name: name, handle: handle, id: Number(name.slice(0, -5)) });
       }
     }
@@ -124,36 +124,41 @@
       var resolved = [];
       var valid = true;
       var prefixCache = new Map();
-      for (var i = 0; i < refs.length; ++i) {
-        var ref = refs[i];
+      async function resolveReference(ref) {
         var asset = index.objects[ref.relative];
         if (!asset || !/^[0-9a-f]{40}$/i.test(asset.hash || "")
             || !Number.isSafeInteger(asset.size) || asset.size <= 0) {
-          valid = false;
-          break;
+          return null;
         }
         try {
           var prefix = asset.hash.slice(0, 2);
-          var prefixHandle = prefixCache.get(prefix);
-          if (!prefixHandle) {
-            prefixHandle = await objectsFolder.getDirectoryHandle(prefix);
-            prefixCache.set(prefix, prefixHandle);
+          var prefixPromise = prefixCache.get(prefix);
+          if (!prefixPromise) {
+            prefixPromise = objectsFolder.getDirectoryHandle(prefix);
+            prefixCache.set(prefix, prefixPromise);
           }
+          var prefixHandle = await prefixPromise;
           var objectHandle = await prefixHandle.getFileHandle(asset.hash);
           var file = await objectHandle.getFile();
-          if (file.size !== asset.size) {
-            valid = false;
-            break;
-          }
-          resolved.push({ ref: ref, file: file, size: asset.size });
+          if (file.size !== asset.size) return null;
+          return { ref: ref, file: file, size: asset.size };
         } catch (error) {
+          return null;
+        }
+      }
+
+      // Resolve file handles in bounded batches to avoid thousands of serial
+      // File System Access API round trips and keep the browser responsive.
+      for (var offset = 0; offset < refs.length; offset += 64) {
+        var batch = await Promise.all(refs.slice(offset, offset + 64).map(resolveReference));
+        if (batch.some(function (item) { return item === null; })) {
           valid = false;
           break;
         }
-        if (i > 0 && i % 250 === 0) {
-          setStatus("Checking installed audio files… " + i + " / " + refs.length);
-          await new Promise(function (resolve) { setTimeout(resolve, 0); });
-        }
+        resolved.push.apply(resolved, batch);
+        var checked = Math.min(offset + batch.length, refs.length);
+        setStatus("Checking installed audio files… " + checked + " / " + refs.length);
+        await new Promise(function (resolve) { setTimeout(resolve, 0); });
       }
       if (valid && resolved.length === refs.length) {
         return { id: candidate.id, files: resolved };
@@ -161,7 +166,6 @@
     }
     return null;
   }
-
   var crcTable = null;
   function crc32(bytes) {
     if (!crcTable) {
@@ -256,22 +260,34 @@
       data: encoder.encode(JSON.stringify(manifest))
     }];
     var musicEntries = [];
-    for (var i = 0; i < match.files.length; ++i) {
-      var item = match.files[i];
-      var data = new Uint8Array(await item.file.arrayBuffer());
-      if (data.length !== item.size) throw new Error("An installed audio file could not be read completely.");
-      var entry = {
-        name: "assets/" + item.ref.relative,
-        data: data
-      };
-      if (item.ref.isMusic) musicEntries.push(entry);
-      else soundEntries.push(entry);
-
-      if (i === 0 || (i + 1) % 20 === 0 || i + 1 === match.files.length) {
-        setStatus("Loading Minecraft Java audio… " + (i + 1) + " / " + match.files.length);
+    var totalBytes = match.files.reduce(function (sum, item) { return sum + item.size; }, 0);
+    var totalMiB = (totalBytes / (1024 * 1024)).toFixed(1);
+    setStatus("Loading " + match.files.length + " Minecraft audio files (" + totalMiB + " MiB)…");
+    for (var offset = 0; offset < match.files.length; offset += 24) {
+      var batch = match.files.slice(offset, offset + 24);
+      var loaded = await Promise.all(batch.map(async function (item) {
+        var data = new Uint8Array(await item.file.arrayBuffer());
+        if (data.length !== item.size) throw new Error("An installed audio file could not be read completely.");
+        return { item: item, data: data };
+      }));
+      loaded.forEach(function (loadedItem) {
+        var item = loadedItem.item;
+        var entry = {
+          name: "assets/" + item.ref.relative,
+          data: loadedItem.data
+        };
+        if (item.ref.isMusic) musicEntries.push(entry);
+        else soundEntries.push(entry);
+      });
+      var completed = Math.min(offset + loaded.length, match.files.length);
+      if (completed % 96 === 0 || completed === match.files.length) {
+        setStatus("Loading Minecraft Java audio… " + completed + " / " + match.files.length
+          + " (" + totalMiB + " MiB)");
         await new Promise(function (resolve) { setTimeout(resolve, 0); });
       }
     }
+
+    setStatus("Preparing the Minecraft audio archives…");
     if (musicEntries.length === 0) throw new Error("The selected asset index did not include music files.");
 
     setStatus("Preparing the Minecraft audio archives…");
