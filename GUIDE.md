@@ -32,22 +32,25 @@ For an audio-enabled EagleFine build, run this from the project root:
 node wasm-toolchain/build-single-html.js --with-audio --with-music --output EagleFine-26.2-audio.html
 ```
 
-The audio generator first checks for the Minecraft Java 26.2 asset cache:
-`%APPDATA%/.minecraft/assets` on Windows, `~/Library/Application
-Support/minecraft/assets` on macOS, or `~/.minecraft/assets` on Linux. It
-checks asset index `32` and verifies the referenced audio files. For a
-non-standard install, set `MINECRAFT_ASSETS_DIR` to the assets folder; set
-`MINECRAFT_ASSET_INDEX` to override the index ID.
+The build always generates and embeds original EagleFine fallback effects
+and music. This requires FFmpeg with both the `libvorbis` and `libopus`
+encoders. A Minecraft installation is not needed on the build computer.
 
-When a complete local cache is found, its audio is used in the locally built
-HTML. If it is missing or incomplete, EagleFine generates original replacement
-effects and music instead. That fallback requires FFmpeg with both the
-`libvorbis` and `libopus` encoders. The HTML always embeds the selected audio;
-players do not need a separate resource pack or audio files.
+When a player opens the audio-enabled HTML, an EagleFine Audio Setup screen
+offers two choices:
 
-GitHub Actions has no Minecraft installation, so its build uses the original
-EagleFine fallback audio. A local build that embeds Minecraft's game audio is
-for personal use; do not redistribute that HTML or its bundled audio.
+- **Select Minecraft Folder:** choose the Minecraft Java `.minecraft` folder
+  or its `assets` folder. EagleFine checks the available asset indexes and
+  reads the matching sound files locally. The browser builds temporary audio
+  archives for that session; the installation is read-only and its files are
+  not uploaded.
+- **Use Embedded Audio:** start with the original effects and soundtrack
+  already included in the HTML.
+
+Cancelling the folder picker, denying access, choosing an incomplete cache, or
+using a browser without supported folder access automatically falls back to
+the embedded EagleFine audio. The prompt is optional, and players do not need
+a separate resource pack or additional audio files.
 
 Allow about 30 minutes on a reasonably capable PC. One completed local build
 took 41 minutes 46 seconds. Downloads and slower hardware can add time.
