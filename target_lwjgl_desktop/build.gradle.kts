@@ -58,6 +58,38 @@ tasks.register<JavaExec>("buildAssetsEPK") {
 	)
 }
 
+// Standalone EagleFine assets intentionally leave the audio manifest and audio files
+// to sounds.epk/music.epk, where the generated original replacement pack lives.
+tasks.register<JavaExec>("buildEagleFineAssetsEPK") {
+	group = "eaglercraft"
+	description = "Pack non-audio resources for the EagleFine standalone client"
+	dependsOn(":game:processResources")
+
+	val resourceRoot = project(":game").layout.projectDirectory.dir("src/main/resources")
+	val stagedRoot = layout.buildDirectory.dir("eaglefine-assets-input")
+	val archive = layout.buildDirectory.file("epk/eaglefine-assets.epk")
+
+	inputs.dir(resourceRoot).withPathSensitivity(PathSensitivity.RELATIVE)
+	outputs.file(archive)
+	classpath = sourceSets["main"].runtimeClasspath
+	mainClass = "net.lax1dude.eaglercraft.v1_8.sp.server.export.EPKPackagerMain"
+
+	doFirst {
+		val staged = stagedRoot.get().asFile
+		staged.deleteRecursively()
+		staged.mkdirs()
+		project.copy {
+			from(resourceRoot)
+			into(staged)
+			exclude("assets/minecraft/sounds.json")
+			exclude("assets/minecraft/sounds/**")
+		}
+		archive.get().asFile.parentFile.mkdirs()
+	}
+
+	args(stagedRoot.get().asFile.absolutePath, archive.get().asFile.absolutePath, "assets.epk")
+}
+
 // Audit-only baseline for measuring the exact archive cost of entries excluded
 // by buildAssetsEPK. It is deliberately not a dependency of any regular build.
 tasks.register<JavaExec>("buildAssetsEPKWithWebUnreachable") {
