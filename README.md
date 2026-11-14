@@ -26,9 +26,9 @@ The first standalone EagleFine HTML test client has been built and opened in a b
 
 ### Audio
 
-- **Original EagleFine audio:** the build generates its own block, footstep, interface, item, creature, water, fire and ambient effects, plus a small original ambient soundtrack. The generator creates 82 effect variants across 41 sound families and 12 music tracks, then maps them to the sound events used by the game.
-- Audio is generated during the build and packaged into `sounds.epk` and `music.epk`, with music embedded in the standard standalone HTML. Players do not need local audio files, a Minecraft installation, or a separate resource pack.
-- The sounds are original procedural replacements designed for a familiar block-building game atmosphere; they are not recordings from Minecraft and do not reproduce its soundtrack. FFmpeg with both `libvorbis` and `libopus` encoders is required.
+- **Audio source selection:** when building locally, EagleFine checks for the Minecraft Java 26.2 asset cache (by default, `%APPDATA%\\.minecraft\\assets` on Windows or `~/.minecraft/assets` on Linux). It uses those verified local sounds when the complete asset index is present. You can override the assets directory with `MINECRAFT_ASSETS_DIR` and the index ID with `MINECRAFT_ASSET_INDEX` (default `32`).
+- If the Minecraft Java audio cache is missing or incomplete, the build automatically generates 82 original sound-effect variations across 41 families and 12 original music tracks. The selected audio is packaged into `sounds.epk` and `music.epk` and embedded in the standalone HTML, so players do not need separate files or a resource pack.
+- GitHub Actions does not have a Minecraft installation, so its build uses the embedded original EagleFine sounds. Local HTML files built using a Minecraft audio cache contain those game assets; keep those personal builds private and do not redistribute them. FFmpeg with both `libvorbis` and `libopus` encoders is required only when the generated fallback is needed.
 
 ### Known limitations
 
@@ -55,7 +55,7 @@ The project uses the upstream Eaglercraft 26.2 Gradle workspace. The documented 
 
 On Windows, use `gradlew.bat` instead of `./gradlew`.
 
-The standalone HTML build is more memory-intensive than the Java compile check. GitHub Actions installs FFmpeg, generates the original EagleFine audio, and builds a self-contained audio-enabled test client. No Minecraft audio cache or player-supplied audio files are used.
+The standalone HTML build is more memory-intensive than the Java compile check. GitHub Actions installs FFmpeg and builds a self-contained client using the original EagleFine fallback audio. A local build automatically uses a complete Minecraft Java 26.2 audio cache when one is available.
 
 ## Project principles
 
