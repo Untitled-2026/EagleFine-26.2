@@ -90,7 +90,7 @@ EagleFine currently:
 - smoothly changes the world-camera FOV while the key is held;
 - provides uncapped item/display/entity Dynamic Lights with block-opacity-aware propagation and build counters;
 - does not yet implement connected textures or shader packs;
-- still needs sound restoration and further browser/GPU compatibility testing.
+- uses an original generated audio pack, which still needs listening tests and further browser/GPU compatibility testing.
 
 ## Integration rule
 
@@ -98,14 +98,22 @@ Prefer EagleFine-owned classes and narrow, documented Minecraft integration
 points. Renderer modifications must preserve the original path when a feature
 is inactive and include fallbacks for unsupported browser/GPU features.
 
-## First standalone test build
+## Audio generation and packaging
 
-The checked-in workspace does not include the original OGG sound files. The
-default standalone build therefore generates an empty sounds.epk and remains
-silent, including in public CI. For a local audio-enabled build, prepare files
-from your own official Minecraft Java 26.2 asset cache with
-`node wasm-toolchain/restore-game-audio.js`, then run
-`node wasm-toolchain/build-single-html.js --with-audio --with-music`. The helper
-verifies local files by SHA-1 and size, requires FFmpeg 6.1.1 or newer with
-libopus, and writes only to the ignored `.eaglefine-audio/` directory. It does
-not download or commit audio files. Do not publish audio-enabled artifacts.
+`wasm-toolchain/generate-eaglefine-audio.js` synthesizes an original set of
+short effects and ambient music from deterministic procedural waveforms. It
+uses the game's sound-event names and subtitle metadata as a routing reference,
+then writes a replacement `sounds.json` alongside the generated audio. The
+generator does not read or download Minecraft audio assets.
+
+Short effects are encoded as OGG Vorbis for the browser's JOrbis decoder.
+Music is encoded as OGG Opus for the browser's native `decodeAudioData` path.
+The Gradle `buildAudioEPKs` task creates `sounds.epk` and `music.epk`, while
+`buildEagleFineAssetsEPK` keeps the original sound manifest and absent audio
+files out of the base asset archive. The standalone HTML builder embeds both
+audio archives when invoked with `--with-audio --with-music`.
+
+GitHub Actions installs FFmpeg, runs the generator, and produces a self-contained
+audio-enabled HTML artifact. Players need no local Minecraft installation,
+separate sound files, or imported resource pack. This is an original first-pass
+sound design, not a copy of Minecraft's sound recordings or music.
