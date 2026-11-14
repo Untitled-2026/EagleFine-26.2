@@ -1,5 +1,8 @@
 package net.minecraft.client.gui.components;
 
+import dev.eaglefine.EagleFine;
+import dev.eaglefine.EagleFineDynamicLights;
+
 import com.google.common.base.Strings;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
@@ -161,6 +164,15 @@ public class DebugScreenOverlay {
                      displayer.addLine("§c[" + id + " failed]");
                   }
                }
+            }
+
+            if (EagleFine.getInstance().getConfig().isDynamicLightsEnabled()) {
+               regularLines.add(String.format(
+                     java.util.Locale.ROOT,
+                     "Dynamic Lights: %d sources, %d lit blocks, %.2f ms rebuild",
+                     EagleFineDynamicLights.getLastFieldSourceCount(),
+                     EagleFineDynamicLights.getLastFieldCellCount(),
+                     EagleFineDynamicLights.getLastFieldBuildNanos() / 1_000_000.0D));
             }
 
             if (!leftLines.isEmpty()) {
