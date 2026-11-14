@@ -41,7 +41,7 @@ concurrency:
 
 jobs:
   standalone-test-build:
-    name: Build silent standalone HTML
+    name: Build standalone HTML with EagleFine audio
     runs-on: ubuntu-24.04
     timeout-minutes: 240
 
@@ -72,14 +72,20 @@ jobs:
       - name: Install pinned Node dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Validate local audio helper syntax
-        run: node --check wasm-toolchain/restore-game-audio.js
+      - name: Install audio encoder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          ffmpeg -hide_banner -encoders | grep -E 'libvorbis|libopus'
+
+      - name: Validate generated audio helper syntax
+        run: node --check wasm-toolchain/generate-eaglefine-audio.js
 
       - name: Build EagleFine standalone HTML
         env:
           EAGLER_BUILD_CAP_MIB: "13312"
         run: |
-          node wasm-toolchain/build-single-html.js --output "$RUNNER_TEMP/EagleFine-26.2.html"
+          node wasm-toolchain/build-single-html.js --with-audio --with-music --output "$RUNNER_TEMP/EagleFine-26.2.html"
           test -s "$RUNNER_TEMP/EagleFine-26.2.html"
           ls -lh "$RUNNER_TEMP/EagleFine-26.2.html"
           sha256sum "$RUNNER_TEMP/EagleFine-26.2.html"
@@ -88,7 +94,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.upload_plain_html
         uses: actions/upload-artifact@v4
         with:
-          name: EagleFine-26.2-silent-test-plain
+          name: EagleFine-26.2-audio-test-plain
           path: ${{ runner.temp }}/EagleFine-26.2.html
           if-no-files-found: error
           retention-days: 7
